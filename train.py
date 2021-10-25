@@ -5,7 +5,8 @@ import argparse
 import torch
 import torch.optim as optim
 
-import src.utils.data_util as data_util
+from src.datasets import StanfordCarsDataset
+from src.utils import get_dataloaders
 from src.model import *
 from src.trainer import Trainer
 
@@ -17,6 +18,13 @@ def parse_args():
 
     root_dir = os.path.abspath(os.path.dirname(__file__))
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default='StanfordCarsDataset',
+        choices=['StanfordCarsDataset'],
+        help="Dataset to use for training the model.",
+    )
     parser.add_argument(
         "--data_dir",
         type=str,
@@ -159,8 +167,8 @@ def train(args):
     )
 
     # Configure dataloaders
-    train_dataloader, eval_dataloader = data_util.get_dataloaders(
-        args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
+    train_dataloader, eval_dataloader = get_dataloaders(
+        globals()[args.dataset], args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
     )
 
     # Configure trainer

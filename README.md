@@ -1,7 +1,6 @@
 # PoseGen: Self-Supervised Pose-Conditioned Vehicle Generation
 
----
-## To be Archieved
+## Getting Started
 
 * Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) package manager.
 * Create and activate conda environment.
@@ -13,10 +12,11 @@ conda activate posegen
 
 > NOTE: PyTorch dependency specified in `environment/conda_env.yml` uses CUDA 11.1. If CUDA 11.1 is unsupported on your environment, please install PyTorch separately by following the [official instructions](https://pytorch.org).
 
-* Download dataset and baseline checkpoints and logs.
+* Download Stanford Cars dataset.
 
 ```shell
-python download.py
+cd data_dir
+sh {PoseGen DIR}/src/misc/stanford_cars_dataset_downloader.sh
 ```
 
 * Start training using baseline model.
@@ -39,6 +39,8 @@ tensorboard --logdir out --bind_all
 
 > NOTE: Metrics logged during training (e.g. IS, FID, KID) are approximations computed using limited data. Use `eval.py` to compute accurate metrics.
 
+---
+# To be updated
 # Baseline Models
 The baseline models are Residual SNGANs from [Mimicry: Towards the Reproducibility of GAN Research](https://github.com/kwotsin/mimicry).
 

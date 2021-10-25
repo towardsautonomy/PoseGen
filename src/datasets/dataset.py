@@ -3,7 +3,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from copy import deepcopy
 import torch
 import torchvision.transforms as transforms
@@ -44,6 +44,12 @@ class Dataset(torch.utils.data.Dataset):
             obj_type_id = list(id_filename_pair.keys())[0]
             filename = list(id_filename_pair.values())[0]
             image = Image.open(filename).resize(self.get_resize_dim())
+            # check for grayscale image
+            if image.mode == 'L':
+                image = ImageOps.colorize(image, black ="blue", white ="white")
+            # perform transforms
+            if self.get_transforms() is not None:
+                image = self.get_transforms()(image)
             sample = { 'image': image,
                        'object_type_id': obj_type_id,
                        'object_description': self.object_id_description_dict()[obj_type_id]
@@ -53,6 +59,12 @@ class Dataset(torch.utils.data.Dataset):
                 filenames = self.get_filenames(self.object_id)
                 assert(idx < len(filenames))
                 image = Image.open(filenames[idx]).resize(self.get_resize_dim())
+                # check for grayscale image
+                if image.mode == 'L':
+                    image = ImageOps.colorize(image, black ="blue", white ="white")
+                # perform transforms
+                if self.get_transforms() is not None:
+                    image = self.get_transforms()(image)
                 sample = { 'image': image,
                            'object_type_id': self.object_id,
                            'object_description': self.object_id_description_dict()[self.object_id]
@@ -63,6 +75,13 @@ class Dataset(torch.utils.data.Dataset):
     def get_resize_dim(self):
         '''
         Returns the dimensions of image size to be resized to (w, h)
+        '''
+        raise NotImplementedError
+
+    # method to get transforms functions
+    def get_transforms(self):
+        '''
+        Returns a list of transforms function
         '''
         raise NotImplementedError
 

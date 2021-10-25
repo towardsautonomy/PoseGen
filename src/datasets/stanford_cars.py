@@ -1,14 +1,10 @@
 # import packages
 import os
 import sys
-import cv2
 import copy
-import json
-import yaml
 import numpy as np
 import scipy
 import scipy.io
-import matplotlib.pyplot as plt
 from dataset import Dataset
 
 # add path to sys
@@ -26,7 +22,12 @@ warnings.filterwarnings("ignore")
 # Dataset Class
 class StanfordCarsDataset(Dataset):
 
-    def __init__(self, dataroot, resize_dim, retrieve_by_id=False, object_id=None, shuffle=True, verbose=True):
+    def __init__(self, dataroot, resize_dim, 
+                       transforms=None,
+                       retrieve_by_id=False, 
+                       object_id=None, 
+                       shuffle=True, 
+                       verbose=True):
         """
         Args:
             dataroot (string): Root Directory of Stanford Cars dataset.
@@ -38,6 +39,7 @@ class StanfordCarsDataset(Dataset):
         """
         self.dataroot = dataroot
         self.resize_dim = resize_dim
+        self.transforms = transforms
         self.retrieve_by_id = retrieve_by_id
         self.object_id = object_id
         self.shuffle = shuffle
@@ -96,6 +98,10 @@ class StanfordCarsDataset(Dataset):
     def get_resize_dim(self):
         return self.resize_dim
 
+    # method to get transforms functions
+    def get_transforms(self):
+        return self.transforms
+
     # method to get a list of object type
     def get_object_type_ids(self):
         return np.array(self.car_type_ids)
@@ -115,6 +121,8 @@ class StanfordCarsDataset(Dataset):
 
 # main function
 if __name__ == '__main__':
+    import cv2
+
     ## dataset object
     # dataset = StanfordCarsDataset( dataroot='/floppy/datasets/Stanford', 
     #                                resize_dim=(256,256), 

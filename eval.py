@@ -4,7 +4,7 @@ import argparse
 
 import torch
 
-import src.utils.data_util as data_util
+from src.utils import get_dataloaders
 from src.model import *
 from src.trainer import Trainer
 
@@ -81,7 +81,7 @@ def eval(args):
     net_d.load_state_dict(state_dict["net_d"])
 
     # Configures eval dataloader
-    _, eval_dataloader = data_util.get_dataloaders(
+    _, eval_dataloader = get_dataloaders(
         args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
     )
 

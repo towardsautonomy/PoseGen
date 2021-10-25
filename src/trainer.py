@@ -127,10 +127,10 @@ def evaluate(net_g, net_d, dataloader, nz, device, samples_z=None):
             [],
         )
 
-        for data, _ in tqdm(dataloader, desc="Evaluating Model"):
+        for data in tqdm(dataloader, desc="Evaluating Model"):
 
             # Compute losses and save intermediate outputs
-            reals, z = prepare_data_for_gan(data, nz, device)
+            reals, z = prepare_data_for_gan(data['image'], nz, device)
             loss_d, fakes, real_pred, fake_pred = compute_loss_d(
                 net_g,
                 net_d,
@@ -329,10 +329,10 @@ class Trainer:
 
         while True:
             pbar = tqdm(self.train_dataloader)
-            for data, _ in pbar:
+            for data in pbar:
 
                 # Training step
-                reals, z = prepare_data_for_gan(data, self.nz, self.device)
+                reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
                 loss_d = self._train_step_d(reals, z)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(z)
