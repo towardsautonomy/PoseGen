@@ -1,4 +1,4 @@
-name: cs236-dp
+name: posegen
 channels:
   - conda-forge
   - defaults

@@ -5,9 +5,9 @@ import argparse
 import torch
 import torch.optim as optim
 
-import util
-from model import *
-from trainer import Trainer
+import src.utils.data_util as data_util
+from src.model import *
+from src.trainer import Trainer
 
 
 def parse_args():
@@ -159,7 +159,7 @@ def train(args):
     )
 
     # Configure dataloaders
-    train_dataloader, eval_dataloader = util.get_dataloaders(
+    train_dataloader, eval_dataloader = data_util.get_dataloaders(
         args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
     )
 
