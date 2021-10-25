@@ -7,11 +7,11 @@
 * Create and activate conda environment.
 
 ```shell
-conda env create -f environment.yml
-conda activate cs236-dp
+conda env create -f environment/conda_env.yml
+conda activate posegen
 ```
 
-> NOTE: PyTorch dependency specified in `environment.yml` uses CUDA 11.1. If CUDA 11.1 is unsupported on your environment, please install PyTorch separately by following the [official instructions](https://pytorch.org).
+> NOTE: PyTorch dependency specified in `environment/conda_env.yml` uses CUDA 11.1. If CUDA 11.1 is unsupported on your environment, please install PyTorch separately by following the [official instructions](https://pytorch.org).
 
 * Download dataset and baseline checkpoints and logs.
 

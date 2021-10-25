@@ -29,7 +29,12 @@ class StanfordCarsDataset(Dataset):
     def __init__(self, dataroot, resize_dim, retrieve_by_id=False, object_id=None, shuffle=True, verbose=True):
         """
         Args:
-            dataroot (string): Root Directory of Ford object dataset.
+            dataroot (string): Root Directory of Stanford Cars dataset.
+            resize_dim (tuple(w, h)): Dimension to resize the images to.
+            retrieve_by_id (bool): Whether or not to retrieve images by their object id.
+            object_id (int): Object ID to retrieve data for - only applicable when `retrieve_by_id` is set.
+            shuffle (bool): Whether or not to shuffle the dataset.
+            verbose (bool): Whether or not to print additional information.
         """
         self.dataroot = dataroot
         self.resize_dim = resize_dim
@@ -110,7 +115,7 @@ class StanfordCarsDataset(Dataset):
 
 # main function
 if __name__ == '__main__':
-    # dataset object
+    ## dataset object
     # dataset = StanfordCarsDataset( dataroot='/floppy/datasets/Stanford', 
     #                                resize_dim=(256,256), 
     #                                retrieve_by_id=True, 
