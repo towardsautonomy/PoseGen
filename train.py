@@ -148,11 +148,12 @@ def train(args):
     if args.im_size == 32:
         net_g = Generator32()
         net_d = Discriminator32()
-    elif args.im_size == 64:
+    # elif args.im_size == 64:
+    else:
         net_g = Generator64()
         net_d = Discriminator64()
-    else:
-        raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
+    # else:
+    #     raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
 
     # Configure optimizers
     opt_g = optim.Adam(net_g.parameters(), lr, betas)
