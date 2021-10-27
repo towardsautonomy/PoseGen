@@ -69,11 +69,12 @@ def eval(args):
     if args.im_size == 32:
         net_g = Generator32()
         net_d = Discriminator32()
-    elif args.im_size == 64:
+    # elif args.im_size == 64:
+    else:
         net_g = Generator64()
         net_d = Discriminator64()
-    else:
-        raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
+    # else:
+    #     raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
 
     # Loads checkpoint
     state_dict = torch.load(args.ckpt_path)
