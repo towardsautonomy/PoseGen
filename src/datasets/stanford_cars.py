@@ -45,8 +45,8 @@ class StanfordCarsDataset(Dataset):
         self.shuffle = shuffle
         self.verbose = verbose
 
-        metadata_filename = os.path.join(dataroot, 'car_devkit/devkit/cars_meta.mat')
-        annotations_filename = os.path.join(dataroot, 'car_devkit/devkit/cars_train_annos.mat')
+        metadata_filename = os.path.join(dataroot, 'devkit/cars_meta.mat')
+        annotations_filename = os.path.join(dataroot, 'devkit/cars_train_annos.mat')
         train_dir = os.path.join(dataroot, 'cars_train')
         test_dir = os.path.join(dataroot, 'cars_test')
 
