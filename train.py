@@ -7,7 +7,8 @@ import torch.optim as optim
 
 from src.datasets import StanfordCarsDataset
 from src.utils import get_dataloaders
-from src.model import *
+# from src.model import Discriminator64
+from src.models import StyleGAN3_Generator, StyleGAN2_Discriminator, PoseGen_Generator, PoseGen_Discriminator
 from src.trainer import Trainer
 
 
@@ -67,7 +68,7 @@ def parse_args():
     parser.add_argument(
         "--im_size",
         type=int,
-        default=32,
+        default=256,
         help=(
             "Images are resized to this resolution. "
             "Models are automatically selected based on resolution."
@@ -76,7 +77,7 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=64,
+        default=32,
         help="Minibatch size used during training.",
     )
     parser.add_argument(
@@ -144,15 +145,19 @@ def train(args):
     # Set parameters
     nz, lr, betas, eval_size, num_workers = (128, 2e-4, (0.0, 0.9), 1000, 4)
 
-    # Configure models
-    if args.im_size == 32:
-        net_g = Generator32()
-        net_d = Discriminator32()
-    elif args.im_size == 64:
-        net_g = Generator64()
-        net_d = Discriminator64()
-    else:
-        raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
+    # Setup model
+    net_g = PoseGen_Generator()
+    # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
+    net_d = PoseGen_Discriminator()
+    # # Configure models
+    # if args.im_size == 32:
+    #     net_g = Generator32()
+    #     net_d = Discriminator32()
+    # elif args.im_size == 64:
+    #     net_g = Generator64()
+    #     net_d = Discriminator64()
+    # else:
+    #     raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
 
     # Configure optimizers
     opt_g = optim.Adam(net_g.parameters(), lr, betas)

@@ -1,5 +1,9 @@
 # PoseGen: Self-Supervised Pose-Conditioned Vehicle Generation
 
+Samples generated from GAN formulation, trained on Stanford Cars dataset.  
+
+![](media/posegen.png)
+
 ## Getting Started
 
 * Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) package manager.
