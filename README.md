@@ -1,9 +1,5 @@
 # PoseGen: Self-Supervised Pose-Conditioned Vehicle Generation
 
-Samples generated from GAN formulation, trained on Stanford Cars dataset.  
-
-![](media/posegen.png)
-
 ## Getting Started
 
 * Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) package manager.
@@ -43,6 +39,25 @@ tensorboard --logdir out --bind_all
 
 > NOTE: Metrics logged during training (e.g. IS, FID, KID) are approximations computed using limited data. Use `eval.py` to compute accurate metrics.
 
+# Evaluation  
+
+## Initial GAN model (11/08/2021)
+
+Models                    |Baseline-32-150k           |
+:------------------------:|:-------------------------:|
+Resolution                |256x256                    |
+Seed                      |0                          |
+Batch Size                |32                         |
+n<sub>iter</sub>          |150k                       |
+n<sub>dis</sub>           |5                          |
+β<sub>1</sub>             |0                          |
+β<sub>2</sub>             |0.9                        |
+lr                        |2e-4                       |
+lr<sub>decay</sub>        |Linear                     |
+IS                        |2.182418                   |
+FID                       |50.09494                   |
+KID                       |0.033805                   |
+Samples                   |![](media/posegen.png)     |  
 ---
 # To be updated
 # Baseline Models

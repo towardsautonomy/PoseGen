@@ -4,9 +4,10 @@ import argparse
 
 import torch
 
+from src.datasets import StanfordCarsDataset
 from src.utils import get_dataloaders
-from src.model import *
-from src.trainer import Trainer
+from src.models import PoseGen_Generator, PoseGen_Discriminator
+from src.trainer import evaluate
 
 
 def parse_args():
@@ -16,6 +17,13 @@ def parse_args():
 
     root_dir = os.path.abspath(os.path.dirname(__file__))
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default='StanfordCarsDataset',
+        choices=['StanfordCarsDataset'],
+        help="Dataset to use for training the model.",
+    )
     parser.add_argument(
         "--data_dir",
         type=str,
@@ -61,19 +69,13 @@ def eval(args):
     # Set parameters
     nz, eval_size, num_workers = (
         128,
-        10000,
+        5000,
         4,
     )
 
-    # Configure models
-    if args.im_size == 32:
-        net_g = Generator32()
-        net_d = Discriminator32()
-    elif args.im_size == 64:
-        net_g = Generator64()
-        net_d = Discriminator64()
-    else:
-        raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
+    # Setup models
+    net_g = PoseGen_Generator()
+    net_d = PoseGen_Discriminator()
 
     # Loads checkpoint
     state_dict = torch.load(args.ckpt_path)
@@ -82,7 +84,7 @@ def eval(args):
 
     # Configures eval dataloader
     _, eval_dataloader = get_dataloaders(
-        args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
+        globals()[args.dataset], args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
     )
 
     # Evaluate models
