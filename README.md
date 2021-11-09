@@ -1,4 +1,4 @@
-# PoseGen: Self-Supervised Object Pose-Conditioned Image Generation
+# PoseGen: Self-Supervised Pose-Conditioned Image Generation
 
 ## Getting Started
 
