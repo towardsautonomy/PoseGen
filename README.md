@@ -1,4 +1,4 @@
-# PoseGen: Self-Supervised Pose-Conditioned Vehicle Generation
+# PoseGen: Self-Supervised Object Pose-Conditioned Image Generation
 
 ## Getting Started
 
