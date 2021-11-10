@@ -59,7 +59,7 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, z, loss_func_g):
+def compute_loss_g(net_g, net_d, z, loss_func_g, reals):
     r"""
     General implementation to compute generator loss.
     """
@@ -67,7 +67,10 @@ def compute_loss_g(net_g, net_d, z, loss_func_g):
     fakes = net_g(z)
     fake_preds = net_d(fakes).view(-1)
     loss_g = loss_func_g(fake_preds)
-
+    # TODO: reconstruction loss
+    mse = (reals - fakes) ** 2
+    print(mse.shape)
+    loss_g += mse
     return loss_g, fakes, fake_preds
 
 
@@ -135,7 +138,7 @@ def evaluate(net_g, net_d, dataloader, nz, device, samples_z=None):
                 net_g,
                 net_d,
                 reals,
-                z,
+                reals,
                 hinge_loss_d,
             )
             loss_g, _, _ = compute_loss_g(
@@ -143,6 +146,7 @@ def evaluate(net_g, net_d, dataloader, nz, device, samples_z=None):
                 net_d,
                 z,
                 hinge_loss_g,
+                reals,
             )
 
             # Update metrics
@@ -333,7 +337,7 @@ class Trainer:
 
                 # Training step
                 reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
-                loss_d = self._train_step_d(reals, z)
+                loss_d = self._train_step_d(reals, reals)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(z)
 

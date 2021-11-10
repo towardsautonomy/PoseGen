@@ -5,10 +5,8 @@ import argparse
 import torch
 import torch.optim as optim
 
-from src.datasets import StanfordCarsDataset
 from src.utils import get_dataloaders
-# from src.model import Discriminator64
-from src.models import StyleGAN3_Generator, StyleGAN2_Discriminator, PoseGen_Generator, PoseGen_Discriminator
+from src.models import PoseGen_Generator, PoseGen_Discriminator, AutoEncoder
 from src.trainer import Trainer
 
 
@@ -146,7 +144,8 @@ def train(args):
     nz, lr, betas, eval_size, num_workers = (128, 2e-4, (0.0, 0.9), 1000, 4)
 
     # Setup models
-    net_g = PoseGen_Generator()
+    # net_g = PoseGen_Generator()
+    net_g = AutoEncoder()
     # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
     net_d = PoseGen_Discriminator()
     # # Configure models
