@@ -168,14 +168,12 @@ class Discriminator(nn.Module):
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self, ndf=1024, ngf: int = 1024, nz=128, bottom_width: int = 4):
+    def __init__(self, ndf=1024, ngf: int = 1024, nz: int=128, bottom_width: int = 4):
         super().__init__()
         self.enc = Encoder(ndf, nz)
         self.dec = Decoder(nz, ngf, bottom_width)
 
     def forward(self, x):
         z = self.enc(x)
-        print("z shape is", z.shape)
         out = self.dec(z)
-        print("out shape (after dec) is", out.shape)
         return out
