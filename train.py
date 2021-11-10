@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 
 from src.utils import get_dataloaders
-from src.models import PoseGen_Generator, PoseGen_Discriminator, AutoEncoder
+from src.models import PoseGen_Discriminator, AutoEncoder
 from src.trainer import Trainer
 
 

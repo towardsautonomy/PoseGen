@@ -284,7 +284,7 @@ class Trainer:
         self.logger.add_image("Samples", samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, z):
+    def _train_step_g(self, z, reals):
         r"""
         Performs a generator training step.
         """
@@ -298,6 +298,7 @@ class Trainer:
                 self.net_d,
                 z,
                 hinge_loss_g,
+                reals,
             )[0],
         )
 
@@ -339,7 +340,7 @@ class Trainer:
                 reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
                 loss_d = self._train_step_d(reals, reals)
                 if self.step % repeat_d == 0:
-                    loss_g = self._train_step_g(z)
+                    loss_g = self._train_step_g(z, reals)
 
                 pbar.set_description(
                     f"L(G):{loss_g.item():.2f}|L(D):{loss_d.item():.2f}|{self.step}/{max_steps}"
