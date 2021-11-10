@@ -68,9 +68,9 @@ def compute_loss_g(net_g, net_d, z, loss_func_g, reals):
     fake_preds = net_d(fakes).view(-1)
     loss_g = loss_func_g(fake_preds)
     # TODO: reconstruction loss
-    mse = (reals - fakes) ** 2
-    print(mse.shape)
-    loss_g += mse
+    # mse = (reals - fakes) ** 2
+    # print(mse.shape)
+    # loss_g += mse
     return loss_g, fakes, fake_preds
 
 
