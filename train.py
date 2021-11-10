@@ -5,6 +5,7 @@ import argparse
 import torch
 import torch.optim as optim
 
+from src.datasets import StanfordCarsDataset
 from src.utils import get_dataloaders
 from src.models import PoseGen_Discriminator, AutoEncoder
 from src.trainer import Trainer
@@ -171,8 +172,12 @@ def train(args):
     )
 
     # Configure dataloaders
+    datasets = {
+        "StanfordCarsDataset": StanfordCarsDataset,
+    }
+    datasets = datasets[args.dataset]
     train_dataloader, eval_dataloader = get_dataloaders(
-        globals()[args.dataset], args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
+        datasets, args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
     )
 
     # Configure trainer
