@@ -174,4 +174,8 @@ class AutoEncoder(nn.Module):
         self.dec = Decoder(nz, ngf, bottom_width)
 
     def forward(self, x):
-        return self.dec(self.enc(x))
+        z = self.enc(x)
+        print("z shape is", z.shape)
+        out = self.dec(z)
+        print("out shape (after dec) is", out.shape)
+        return out
