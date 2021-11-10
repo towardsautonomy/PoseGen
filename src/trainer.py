@@ -138,7 +138,7 @@ def evaluate(net_g, net_d, dataloader, nz, device, samples_z=None):
                 net_g,
                 net_d,
                 reals,
-                reals,
+                z,  # TODO: revert back to reals
                 hinge_loss_d,
             )
             loss_g, _, _ = compute_loss_g(
@@ -338,7 +338,7 @@ class Trainer:
 
                 # Training step
                 reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
-                loss_d = self._train_step_d(reals, reals)
+                loss_d = self._train_step_d(reals, z)  # TODO: revert
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(z, reals)
 
