@@ -59,12 +59,12 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, reals, loss_func_g, lambda_g=0.5, lambda_mse=1.5):
+def compute_loss_g(net_g, net_d, reals, loss_func_g, labels_ohe, lambda_g=0.5, lambda_mse=1.5):
     r"""
     General implementation to compute generator loss.
     """
-
-    fakes = net_g(reals)
+    comb = torch.cat((reals, labels_ohe), axis=1)
+    fakes = net_g(comb)
     fake_preds = net_d(fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
     # reconstruction loss
@@ -73,16 +73,15 @@ def compute_loss_g(net_g, net_d, reals, loss_func_g, lambda_g=0.5, lambda_mse=1.
     return loss_g, fakes, fake_preds
 
 
-def compute_loss_d(net_g, net_d, reals, loss_func_d):
+def compute_loss_d(net_g, net_d, reals, loss_func_d, labels_ohe):
     r"""
     General implementation to compute discriminator loss.
     """
-
-    real_preds = net_d(reals).view(-1)
-    fakes = net_g(reals).detach()
+    comb = torch.cat((reals, labels_ohe), axis=1)
+    real_preds = net_d(comb).view(-1)
+    fakes = net_g(comb).detach()
     fake_preds = net_d(fakes).view(-1)
     loss_d = loss_func_d(real_preds, fake_preds)
-
     return loss_d, fakes, real_preds, fake_preds
 
 
@@ -139,6 +138,7 @@ def evaluate(net_g, net_d, dataloader, reals, device, train=False):
                 net_d,
                 reals,
                 hinge_loss_d,
+                labels_ohe=...,
             )
             loss_g, _, _ = compute_loss_g(
                 net_g,
@@ -285,7 +285,7 @@ class Trainer:
         self.logger.add_image("Fake Samples", fake_samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, reals):
+    def _train_step_g(self, reals, labels_ohe):
         r"""
         Performs a generator training step.
         """
@@ -299,10 +299,11 @@ class Trainer:
                 self.net_d,
                 reals,
                 hinge_loss_g,
+                labels_ohe,
             )[0],
         )
 
-    def _train_step_d(self, reals):
+    def _train_step_d(self, reals, labels_ohe):
         r"""
         Performs a discriminator training step.
         """
@@ -316,6 +317,7 @@ class Trainer:
                 self.net_d,
                 reals,
                 hinge_loss_d,
+                labels_ohe,
             )[0],
         )
 
@@ -348,10 +350,9 @@ class Trainer:
                 labels_ohe = F.one_hot(labels, w * h)
                 labels_ohe = labels_ohe.resize(bs, w, h).to(self.device)
                 labels_ohe = labels_ohe.unsqueeze(dim=1)
-                reals_d = torch.cat((reals, labels_ohe), axis=1)
-                loss_d = self._train_step_d(reals_d)
+                loss_d = self._train_step_d(reals, labels_ohe)
                 if self.step % repeat_d == 0:
-                    loss_g = self._train_step_g(reals_d)
+                    loss_g = self._train_step_g(reals, labels_ohe)
 
                 pbar.set_description(
                     f"L(G):{loss_g.item():.2f}|L(D):{loss_d.item():.2f}|{self.step}/{max_steps}"
