@@ -344,7 +344,7 @@ class Trainer:
                 reals = data['image'].to(self.device)
                 n_classes = 196  # TODO: refactor
                 labels = data['object_type_id'] - 1  # so it's 0-indexed
-                labels_ohe = F.one_hot(labels, n_classes).to(self.device)
+                labels_ohe = F.one_hot(labels, n_classes)
                 image_ohe = labels_ohe[:, :, None, None]
                 w, h = reals.shape[-2:]
                 image_ohe = image_ohe.repeat(1, 1, w, h)
