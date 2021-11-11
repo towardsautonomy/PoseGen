@@ -146,7 +146,7 @@ def train(args):
 
     # Setup models
     # net_g = PoseGen_Generator()
-    net_g = AutoEncoder()
+    net_g = AutoEncoder(nz)
     # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
     net_d = PoseGen_Discriminator()
     # # Configure models
