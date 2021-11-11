@@ -344,13 +344,15 @@ class Trainer:
                 reals = data['image'].to(self.device)
                 n_classes = 196  # TODO: refactor
                 labels = data['object_type_id'] - 1  # so it's 0-indexed
-                labels_ohe = F.one_hot(labels, n_classes)
-                image_ohe = labels_ohe[:, :, None, None]
-                w, h = reals.shape[-2:]
-                image_ohe = image_ohe.repeat(1, 1, w, h).to(self.device)
+                bs, _, w, h = reals.shape[-2:]
+                # labels_ohe = F.one_hot(labels, n_classes)
+                # image_ohe = labels_ohe[:, :, None, None]
+
+                # image_ohe = image_ohe.repeat(1, 1, w, h).to(self.device)
+                labels_ohe = F.one_hot(labels, w * h)
+                labels_ohe = labels_ohe.resize(bs, w, h).to(self.device)
                 print(reals.shape)
                 print(labels_ohe.shape)
-                print(image_ohe.shape)
                 loss_d = self._train_step_d(reals)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(reals)
