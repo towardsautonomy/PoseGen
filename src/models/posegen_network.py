@@ -17,7 +17,7 @@ class Encoder(nn.Module):
     def __init__(self, ndf=1024, nz=128):
         super().__init__()
 
-        self.block1 = DBlockOptimized(3, ndf >> 6)
+        self.block1 = DBlockOptimized(4, ndf >> 6)
         self.block2 = DBlock(ndf >> 6, ndf >> 5, downsample=True)
         self.block3 = DBlock(ndf >> 5, ndf >> 4, downsample=True)
         self.block4 = DBlock(ndf >> 4, ndf >> 3, downsample=True)
