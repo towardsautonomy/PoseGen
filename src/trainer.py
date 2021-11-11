@@ -106,6 +106,14 @@ def train_step(net, opt, sch, compute_loss):
     return loss
 
 
+def get_labels_ohe(data, reals, device):
+    labels = data['object_type_id'] - 1  # so it's 0-indexed
+    bs, _, w, h = reals.shape
+    labels_ohe = F.one_hot(labels, w * h)
+    labels_ohe = labels_ohe.resize(bs, w, h).to(device)
+    return labels_ohe.unsqueeze(dim=1)
+
+
 def evaluate(net_g, net_d, dataloader, reals, device, train=False):
     r"""
     Evaluates model and logs metrics.
@@ -139,18 +147,20 @@ def evaluate(net_g, net_d, dataloader, reals, device, train=False):
             # Compute losses and save intermediate outputs
             # reals, z = prepare_data_for_gan(data['image'], nz, device)
             reals = data['image'].to(device)
+            labels_ohe = get_labels_ohe(data, reals, device)
             loss_d, fakes, real_pred, fake_pred = compute_loss_d(
                 net_g,
                 net_d,
                 reals,
                 hinge_loss_d,
-                labels_ohe=...,
+                labels_ohe=labels_ohe,
             )
             loss_g, _, _ = compute_loss_g(
                 net_g,
                 net_d,
                 reals,
-                hinge_loss_g
+                hinge_loss_g,
+                labels_ohe,
             )
 
             # Update metrics
@@ -351,11 +361,7 @@ class Trainer:
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
                 reals = data['image'].to(self.device)
                 # n_classes = 196  # TODO: refactor
-                labels = data['object_type_id'] - 1  # so it's 0-indexed
-                bs, _, w, h = reals.shape
-                labels_ohe = F.one_hot(labels, w * h)
-                labels_ohe = labels_ohe.resize(bs, w, h).to(self.device)
-                labels_ohe = labels_ohe.unsqueeze(dim=1)
+                labels_ohe = get_labels_ohe(data, reals, self.device)
                 loss_d = self._train_step_d(reals, labels_ohe)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(reals, labels_ohe)
