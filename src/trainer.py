@@ -347,7 +347,7 @@ class Trainer:
                 labels_ohe = F.one_hot(labels, n_classes)
                 image_ohe = labels_ohe[:, :, None, None]
                 w, h = reals.shape[-2:]
-                image_ohe = image_ohe.repeat(1, 1, w, h)
+                image_ohe = image_ohe.repeat(1, 1, w, h).to(self.device)
                 print(reals.shape)
                 print(labels_ohe.shape)
                 print(image_ohe.shape)
