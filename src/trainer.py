@@ -341,6 +341,7 @@ class Trainer:
                 n_classes = 196  # TODO: refactor
                 labels = data['object_type_id'] - 1  # so it's 0-indexed
                 labels_ohe = F.one_hot(labels, n_classes)
+                print(reals.shape)
                 print(labels_ohe.shape)
                 loss_d = self._train_step_d(reals)
                 if self.step % repeat_d == 0:
