@@ -348,7 +348,7 @@ class Trainer:
                 labels_ohe = F.one_hot(labels, w * h)
                 labels_ohe = labels_ohe.resize(bs, w, h).to(self.device)
                 labels_ohe = labels_ohe.unsqueeze(dim=1)
-                reals_d = torch.cat((reals, labels_ohe))
+                reals_d = torch.cat((reals, labels_ohe), axis=1)
                 loss_d = self._train_step_d(reals_d)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(reals)
