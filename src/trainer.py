@@ -81,7 +81,8 @@ def compute_loss_d(net_g, net_d, reals, loss_func_d, labels_ohe):
     comb = torch.cat((reals, labels_ohe), axis=1)
     real_preds = net_d(comb).view(-1)
     fakes = net_g(comb).detach()
-    fake_preds = net_d(fakes).view(-1)
+    comb_fakes = torch.cat((fakes, labels_ohe), axis=1)
+    fake_preds = net_d(comb_fakes).view(-1)
     loss_d = loss_func_d(real_preds, fake_preds)
     return loss_d, fakes, real_preds, fake_preds
 
