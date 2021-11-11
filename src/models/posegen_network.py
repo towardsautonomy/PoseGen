@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from module import *
 
+
 class Encoder(nn.Module):
     r"""
     ResNet backbone encoder architecture.
@@ -41,6 +42,7 @@ class Encoder(nn.Module):
         h = torch.sum(h, dim=(2, 3))
         y = self.l8(h)
         return y
+
 
 class Decoder(nn.Module):
     r"""
@@ -83,6 +85,7 @@ class Decoder(nn.Module):
         h = self.c8(h)
         y = torch.tanh(h)
         return y
+
 
 class Generator(nn.Module):
     r"""
@@ -162,3 +165,15 @@ class Discriminator(nn.Module):
         h = torch.sum(h, dim=(2, 3))
         y = self.l8(h)
         return y
+
+
+class AutoEncoder(nn.Module):
+    def __init__(self, ndf=1024, ngf: int = 1024, nz: int=128, bottom_width: int = 4):
+        super().__init__()
+        self.enc = Encoder(ndf, nz)
+        self.dec = Decoder(nz, ngf, bottom_width)
+
+    def forward(self, x):
+        z = self.enc(x)
+        out = self.dec(z)
+        return out

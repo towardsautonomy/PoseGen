@@ -7,8 +7,7 @@ import torch.optim as optim
 
 from src.datasets import StanfordCarsDataset
 from src.utils import get_dataloaders
-# from src.model import Discriminator64
-from src.models import StyleGAN3_Generator, StyleGAN2_Discriminator, PoseGen_Generator, PoseGen_Discriminator
+from src.models import PoseGen_Discriminator, AutoEncoder, PoseGen_Generator
 from src.trainer import Trainer
 
 
@@ -77,7 +76,7 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,
+        default=64,
         help="Minibatch size used during training.",
     )
     parser.add_argument(
@@ -86,7 +85,7 @@ def parse_args():
     parser.add_argument(
         "--repeat_d",
         type=int,
-        default=5,
+        default=1,
         help="Number of discriminator updates before a generator update.",
     )
     parser.add_argument(
@@ -143,10 +142,11 @@ def train(args):
     torch.manual_seed(args.seed)
 
     # Set parameters
-    nz, lr, betas, eval_size, num_workers = (128, 2e-4, (0.0, 0.9), 1000, 4)
+    nz, lr, betas, eval_size, num_workers = (1024, 2e-4, (0.0, 0.9), 1000, 4)
 
     # Setup models
-    net_g = PoseGen_Generator()
+    # net_g = PoseGen_Generator()
+    net_g = AutoEncoder()
     # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
     net_d = PoseGen_Discriminator()
     # # Configure models
@@ -172,8 +172,12 @@ def train(args):
     )
 
     # Configure dataloaders
+    datasets = {
+        "StanfordCarsDataset": StanfordCarsDataset,
+    }
+    datasets = datasets[args.dataset]
     train_dataloader, eval_dataloader = get_dataloaders(
-        globals()[args.dataset], args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
+        datasets, args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
     )
 
     # Configure trainer
