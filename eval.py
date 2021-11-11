@@ -6,7 +6,7 @@ import torch
 
 from src.datasets import StanfordCarsDataset
 from src.utils import get_dataloaders
-from src.models import PoseGen_Generator, PoseGen_Discriminator
+from src.models import AutoEncoder, PoseGen_Generator, PoseGen_Discriminator
 from src.trainer import evaluate
 
 
@@ -68,13 +68,13 @@ def eval(args):
 
     # Set parameters
     nz, eval_size, num_workers = (
-        128,
+        1024,
         5000,
         4,
     )
 
     # Setup models
-    net_g = PoseGen_Generator()
+    net_g = AutoEncoder()
     net_d = PoseGen_Discriminator()
 
     # Loads checkpoint

@@ -41,6 +41,26 @@ tensorboard --logdir out --bind_all
 
 # Evaluation  
 
+## Initial Auto-Encoder model (11/10/2021)
+
+Models                    |GAN (default)              |
+:------------------------:|:-------------------------:|
+Resolution                |256x256                    |
+Seed                      |0                          |
+Batch Size                |32                         |
+n<sub>iter</sub>          |150k                       |
+n<sub>dis</sub>           |5                          |
+β<sub>1</sub>             |0                          |
+β<sub>2</sub>             |0.9                        |
+lr                        |2e-4                       |
+lr<sub>decay</sub>        |Linear                     |
+len(z)                    |1024                       |
+IS                        |2.755932                   |
+FID                       |57.62947                   |
+KID                       |0.038041                   |
+Samples                   | Real / Fake               |   
+Samples                   | <p float="left"><img src="media/posegen_ae_real.png" width="300" /><img src="media/posegen_ae_fake.png" width="300" /> </p> |  
+
 ## Initial GAN model (11/08/2021)
 
 Models                    |GAN (default)              |
@@ -54,7 +74,8 @@ n<sub>dis</sub>           |5                          |
 β<sub>2</sub>             |0.9                        |
 lr                        |2e-4                       |
 lr<sub>decay</sub>        |Linear                     |
+len(z)                    |128                        |
 IS                        |2.182418                   |
 FID                       |50.09494                   |
 KID                       |0.033805                   |
-Samples                   |![](media/posegen.png)     |   
+Samples                   |![](media/posegen_gan.png)     |   
