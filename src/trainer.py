@@ -339,9 +339,9 @@ class Trainer:
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
                 reals = data['image'].to(self.device)
                 n_classes = 196  # TODO: refactor
-                # labels = F.one_hot(data['object_type_id'], n_classes)
-                print(data['object_type_id'])
-                print(data['object_type_id'].shape)
+                labels = data['object_type_id'] - 1  # so it's 0-indexed
+                labels_ohe = F.one_hot(labels, n_classes)
+                print(labels_ohe.shape)
                 loss_d = self._train_step_d(reals)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(reals)
