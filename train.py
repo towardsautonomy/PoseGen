@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,
+        default=64,
         help="Minibatch size used during training.",
     )
     parser.add_argument(
@@ -85,7 +85,7 @@ def parse_args():
     parser.add_argument(
         "--repeat_d",
         type=int,
-        default=5,
+        default=1,
         help="Number of discriminator updates before a generator update.",
     )
     parser.add_argument(
@@ -142,7 +142,7 @@ def train(args):
     torch.manual_seed(args.seed)
 
     # Set parameters
-    nz, lr, betas, eval_size, num_workers = (128, 2e-4, (0.0, 0.9), 1000, 4)
+    nz, lr, betas, eval_size, num_workers = (1024, 2e-4, (0.0, 0.9), 1000, 4)
 
     # Setup models
     # net_g = PoseGen_Generator()

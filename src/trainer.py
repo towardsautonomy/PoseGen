@@ -59,16 +59,16 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, reals, loss_func_g):
+def compute_loss_g(net_g, net_d, reals, loss_func_g, lambda_g=0.5, lambda_mse=1.5):
     r"""
     General implementation to compute generator loss.
     """
 
     fakes = net_g(reals)
     fake_preds = net_d(fakes).view(-1)
-    loss_g = loss_func_g(fake_preds)
-    # TODO: reconstruction loss
-    loss_rec = torch.nn.MSELoss(reduction='mean')(reals, fakes)
+    loss_g = lambda_g * loss_func_g(fake_preds)
+    # reconstruction loss
+    loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(reals, fakes)
     loss_g += loss_rec
     return loss_g, fakes, fake_preds
 
