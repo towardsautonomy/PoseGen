@@ -65,6 +65,7 @@ def compute_loss_g(net_g, net_d, reals, loss_func_g, labels_ohe, lambda_g=0.5, l
     """
     comb = torch.cat((reals, labels_ohe), axis=1)
     fakes = net_g(comb)
+    print(fakes.shape)
     fake_preds = net_d(fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
     # reconstruction loss
