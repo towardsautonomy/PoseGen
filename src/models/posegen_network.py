@@ -179,6 +179,6 @@ class AutoEncoder(nn.Module):
         self.dec = Decoder(nz, ngf, bottom_width, skip_connections=True)
 
     def forward(self, x):
-        z, h1, h2, h3, h4, h5, h6, h7, h8, h9 = self.enc(x)
-        out = self.dec(z, h1, h2, h3, h4, h5, h6, h7, h8, h9)
+        z, hidden_features = self.enc(x)
+        out = self.dec(z, hidden_features)
         return out
