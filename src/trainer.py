@@ -351,7 +351,7 @@ class Trainer:
                 reals_d = torch.cat((reals, labels_ohe), axis=1)
                 loss_d = self._train_step_d(reals_d)
                 if self.step % repeat_d == 0:
-                    loss_g = self._train_step_g(reals)
+                    loss_g = self._train_step_g(reals_d)
 
                 pbar.set_description(
                     f"L(G):{loss_g.item():.2f}|L(D):{loss_d.item():.2f}|{self.step}/{max_steps}"
