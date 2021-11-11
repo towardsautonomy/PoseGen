@@ -319,6 +319,10 @@ class Trainer:
             )[0],
         )
 
+    @staticmethod
+    def cat(x, y):
+        return torch.cat((x.float(), y.float()), axis=1)
+
     def train(self, max_steps, repeat_d, eval_every, ckpt_every):
         r"""
         Performs GAN training, checkpointing and logging.
@@ -340,9 +344,13 @@ class Trainer:
                 reals = data['image'].to(self.device)
                 n_classes = 196  # TODO: refactor
                 labels = data['object_type_id'] - 1  # so it's 0-indexed
-                labels_ohe = F.one_hot(labels, n_classes)
+                labels_ohe = F.one_hot(labels, n_classes).to(self.device)
+                image_ohe = labels_ohe[:, :, None, None]
+                w, h = reals.shape[-2:]
+                image_ohe = image_ohe.repeat(1, 1, w, h)
                 print(reals.shape)
                 print(labels_ohe.shape)
+                print(image_ohe.shape)
                 loss_d = self._train_step_d(reals)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(reals)
