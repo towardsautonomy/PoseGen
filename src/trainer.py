@@ -342,18 +342,13 @@ class Trainer:
                 # Training step
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
                 reals = data['image'].to(self.device)
-                n_classes = 196  # TODO: refactor
+                # n_classes = 196  # TODO: refactor
                 labels = data['object_type_id'] - 1  # so it's 0-indexed
                 bs, _, w, h = reals.shape
-                # labels_ohe = F.one_hot(labels, n_classes)
-                # image_ohe = labels_ohe[:, :, None, None]
-
-                # image_ohe = image_ohe.repeat(1, 1, w, h).to(self.device)
                 labels_ohe = F.one_hot(labels, w * h)
                 labels_ohe = labels_ohe.resize(bs, w, h).to(self.device)
-                print(reals.shape)
-                print(labels_ohe.shape)
-                loss_d = self._train_step_d(reals)
+                reals_d = torch.cat((reals, labels_ohe))
+                loss_d = self._train_step_d(reals_d)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(reals)
 
