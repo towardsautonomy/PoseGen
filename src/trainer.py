@@ -59,14 +59,18 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
+def cat(x, y):
+    return torch.cat((x.float(), y.float()), axis=1)
+
+
 def compute_loss_g(net_g, net_d, reals, loss_func_g, labels_ohe, lambda_g=0.5, lambda_mse=1.5):
     r"""
     General implementation to compute generator loss.
     """
-    comb = torch.cat((reals, labels_ohe), axis=1)
+    comb = cat(reals, labels_ohe)
     fakes = net_g(comb)
-    print(fakes.shape)
-    fake_preds = net_d(fakes).view(-1)
+    comb_fakes = cat(fakes, labels_ohe)
+    fake_preds = net_d(comb_fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
     # reconstruction loss
     loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(reals, fakes)
@@ -78,10 +82,10 @@ def compute_loss_d(net_g, net_d, reals, loss_func_d, labels_ohe):
     r"""
     General implementation to compute discriminator loss.
     """
-    comb = torch.cat((reals, labels_ohe), axis=1)
+    comb = cat(reals, labels_ohe)
     real_preds = net_d(comb).view(-1)
     fakes = net_g(comb).detach()
-    comb_fakes = torch.cat((fakes, labels_ohe), axis=1)
+    comb_fakes = cat(fakes, labels_ohe)
     fake_preds = net_d(comb_fakes).view(-1)
     loss_d = loss_func_d(real_preds, fake_preds)
     return loss_d, fakes, real_preds, fake_preds
