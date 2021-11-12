@@ -191,7 +191,8 @@ def evaluate(net_g, net_d, dataloader, reals, device, train=False):
         if train:
             true_samples = reals.cpu()
             true_samples = vutils.make_grid(true_samples, nrow=6, padding=4, normalize=True)
-            fake_samples = net_g(reals)
+            comb = cat(reals, labels_ohe)
+            fake_samples = net_g(comb)[:, :3, :, :]  # only get the first 3 channels
             fake_samples = F.interpolate(fake_samples, 256).cpu()
             fake_samples = vutils.make_grid(fake_samples, nrow=6, padding=4, normalize=True)
 
