@@ -172,7 +172,7 @@ class Decoder(nn.Module):
         y = torch.tanh(h_final)
         
         return y        
-class AutoEncoder(nn.Module):
+class PoseGen(nn.Module):
     def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4):
         super().__init__()
         # object appearance encoder

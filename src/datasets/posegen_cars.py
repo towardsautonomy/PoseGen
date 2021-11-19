@@ -21,7 +21,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Dataset Class
-class StanfordCarsDataset(Dataset):
+class PoseGenCarsDataset(Dataset):
 
     def __init__(self, obj_dataroot, 
                        bgnd_dataroot,
@@ -30,6 +30,7 @@ class StanfordCarsDataset(Dataset):
                        transforms=None,
                        object_id=None, 
                        shuffle=True,
+                       cars_ext='JPEG',
                        background_ext='JPEG',
                        silhouette_ext='png', 
                        verbose=True):
@@ -52,38 +53,27 @@ class StanfordCarsDataset(Dataset):
         self.shuffle = shuffle
         self.verbose = verbose
 
-        metadata_filename = os.path.join(obj_dataroot, 'car_devkit/devkit/cars_meta.mat')
-        annotations_filename = os.path.join(obj_dataroot, 'car_devkit/devkit/cars_train_annos.mat')
-        train_dir = os.path.join(obj_dataroot, 'cars_train')
-        test_dir = os.path.join(obj_dataroot, 'cars_test')
-
-        # read metadata
-        cars_metadata = {}
-        mat = scipy.io.loadmat(metadata_filename)
-        for i, car_model in enumerate(mat['class_names'][0]):
-            cars_metadata[i+1] = car_model[0]
-
         # pairs of object type and filenames
+        self.car_type_ids = []
         self.id_filaneme_pairs = []
-
         # dictionary of object type and description
-        self.id_description_dict = cars_metadata.copy()
-
+        self.id_description_dict = {}
         # read annotations
         self.annotations = {}
-        mat = scipy.io.loadmat(annotations_filename)
-        for ann in mat['annotations'][0]:
-            filename = os.path.join(train_dir, ann[-1][0])
-            if os.path.exists(filename):
-                car_type_id = int(ann[-2][0][0])
-                if car_type_id in self.annotations.keys():
-                    self.annotations[car_type_id].append(filename)
-                else:
-                    self.annotations[car_type_id] = [filename]
-                self.id_filaneme_pairs.append({car_type_id: filename})
-
-        # list of car type ids
-        self.car_type_ids = list(self.annotations.keys())
+        # get list of object types defined by dir names
+        car_models = os.listdir(self.obj_dataroot)
+        # build list of objects
+        for car_type_id, car_model in enumerate(car_models):
+            self.car_type_ids.append(car_type_id)
+            filenames = glob.glob(os.path.join(self.obj_dataroot, '{}/*.{}'.format(car_model, cars_ext)))
+            for filename in filenames:
+                if os.path.exists(filename):
+                    if car_type_id in self.annotations.keys():
+                        self.annotations[car_type_id].append(filename)
+                    else:
+                        self.annotations[car_type_id] = [filename]
+                        self.id_description_dict[car_type_id] = car_model
+                    self.id_filaneme_pairs.append({car_type_id: filename})
 
         # get background images
         self.background_image_filenames = glob.glob(os.path.join(bgnd_dataroot, '*.'+background_ext))
@@ -105,11 +95,7 @@ class StanfordCarsDataset(Dataset):
 
     # method to get length of data
     def __len__(self, object_id=None):
-        if object_id==None:
-            return len(self.id_filaneme_pairs)
-        else:
-            assert(object_id in self.car_type_ids)
-            return len(self.annotations[object_id])
+        return len(self.id_filaneme_pairs)
 
     # method to get resize shape
     def get_resize_dim(self):
@@ -140,7 +126,6 @@ class StanfordCarsDataset(Dataset):
     def get_silhouette_filenames(self):
         return self.silhouette_image_filenames
 
-
     # method to get a dictionary of {object type: object_description} pairs
     def object_id_description_dict(self):
         return self.id_description_dict
@@ -150,15 +135,17 @@ if __name__ == '__main__':
     import cv2
 
     ## dataset object
-    dataset = StanfordCarsDataset( obj_dataroot='/floppy/datasets/Stanford', 
+    dataset = PoseGenCarsDataset( obj_dataroot='/floppy/datasets/PoseGen/cars', 
                                    bgnd_dataroot='/floppy/datasets/PoseGen/background',
                                    sil_dataroot='/floppy/datasets/PoseGen/rendered_silhouette',
                                    resize_dim=(256,256),
                                    verbose=True)
 
+    ## get object type ids
+    object_type_ids = dataset.get_object_type_ids()
     # display samples
     for i in range(dataset.__len__(1)):
-        sample = dataset.__getitem__(i, 1)
+        sample = dataset.__getitem__(i, object_type_ids[0])
         cv2.namedWindow(sample['object_description'])
         obj_img_bgr = cv2.cvtColor(np.array(sample['obj_image']), cv2.COLOR_RGB2BGR)
         bgnd_img_bgr = cv2.cvtColor(np.array(sample['bgnd_image']), cv2.COLOR_RGB2BGR)

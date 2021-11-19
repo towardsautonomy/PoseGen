@@ -9,3 +9,4 @@ sys.path.append(DATASETS_DIR)
 
 # import datasets
 from stanford_cars import StanfordCarsDataset
+from posegen_cars import PoseGenCarsDataset

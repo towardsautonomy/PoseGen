@@ -107,7 +107,7 @@ def train_step(net, opt, sch, compute_loss):
     return loss
 
 
-def evaluate(net_g, net_d, dataloader, real_obj, real_bgnd, real_sil, device, train=False):
+def evaluate(net_g, net_d, dataloader, device, train=False):
     r"""
     Evaluates model and logs metrics.
     Attributes:
