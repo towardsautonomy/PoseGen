@@ -198,13 +198,15 @@ class PoseGen(nn.Module):
     def forward(self, x_obj, x_bgnd, x_silhouette):
         z_appear, appear_hidden_features = self.obj_appear_enc(x_obj)
         if self.pretrain:
-            z = z_appear
+            z_bgnd = torch.zeros_like(z_appear)
+            z_pose = torch.zeros_like(z_appear)
             bgnd_hidden_features = None
         else:
             z_bgnd, bgnd_hidden_features = self.background_enc(x_bgnd)
             z_pose, pose_hidden_features = self.pose_enc(x_silhouette)
             # concatenate latent vectors
-            z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
+
+        z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
         # reconstruct
         out = self.dec(z, bgnd_hidden_features)
         return out
