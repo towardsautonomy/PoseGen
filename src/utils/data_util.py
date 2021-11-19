@@ -6,13 +6,15 @@ import torchvision.datasets as datasets
 def collate_fn(batch):
     return [(b['image']) for b in batch]
 
-def get_dataloaders(dataset, data_dir, imsize, batch_size, eval_size, num_workers=1):
+def get_dataloaders(dataset, obj_data_dir, bgnd_data_dir, sil_data_dir, imsize, batch_size, eval_size, num_workers=1):
     r"""
     Creates a dataloader from a directory containing image data.
     """
 
     dataset = dataset(
-        dataroot=data_dir,
+        obj_dataroot=obj_data_dir,
+        bgnd_dataroot=bgnd_data_dir,
+        sil_dataroot=sil_data_dir,
         resize_dim=(imsize,imsize),
         transforms=transforms.Compose(
             [

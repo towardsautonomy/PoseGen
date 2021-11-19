@@ -130,12 +130,12 @@ class Decoder(nn.Module):
         bottom_width (int): Starting width for upsampling generator output to an image.
     """
 
-    def __init__(self, nz=128, ngf=512, bottom_width=4, skip_connections=False):
+    def __init__(self, nz=128, ngf=512, bottom_width=4, skip_connections=False, n_encoders=2):
         super().__init__()
 
         self.skip_connections = skip_connections
 
-        self.l1 = nn.Linear(nz, (bottom_width ** 2) * ngf)
+        self.l1 = nn.Linear(nz*n_encoders, (bottom_width ** 2) * ngf)
         self.unfatten = nn.Unflatten(1, (ngf, bottom_width, bottom_width))
         self.block2 = GBlock(ngf, ngf >> 1, upsample=True)
         self.block3 = GBlock(ngf >> 1, ngf >> 2, upsample=True)
@@ -175,10 +175,23 @@ class Decoder(nn.Module):
 class AutoEncoder(nn.Module):
     def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4):
         super().__init__()
-        self.enc = Encoder(ndf, nz)
-        self.dec = Decoder(nz, ngf, bottom_width, skip_connections=True)
+        # object appearance encoder
+        self.obj_appear_enc = Encoder(ndf, nz)
+        # background encoder
+        self.background_enc = Encoder(ndf, nz)
+        # pose encoder
+        self.pose_enc = Encoder(ndf, nz)
+        self.dec = Decoder(nz, ngf, bottom_width, skip_connections=True, n_encoders=3)
 
-    def forward(self, x):
-        z, hidden_features = self.enc(x)
-        out = self.dec(z, hidden_features)
+    def forward(self, x_obj, x_bgnd, x_silhouette):
+        z_appear, appear_hidden_features = self.obj_appear_enc(x_obj)
+        z_bgnd, bgnd_hidden_features = self.background_enc(x_bgnd)
+        z_pose, pose_hidden_features = self.pose_enc(x_silhouette)
+        # concatenate latent vectors
+        z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
+        # hidden features
+        hidden_features = [a + b + c for a, b, c in \
+                            zip(appear_hidden_features, bgnd_hidden_features, pose_hidden_features)]
+        # reconstruct
+        out = self.dec(z, bgnd_hidden_features)
         return out

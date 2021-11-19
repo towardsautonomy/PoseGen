@@ -2,6 +2,7 @@
 import os
 import sys
 import copy
+import glob
 import numpy as np
 import scipy
 import scipy.io
@@ -22,33 +23,39 @@ warnings.filterwarnings("ignore")
 # Dataset Class
 class StanfordCarsDataset(Dataset):
 
-    def __init__(self, dataroot, resize_dim, 
+    def __init__(self, obj_dataroot, 
+                       bgnd_dataroot,
+                       sil_dataroot,
+                       resize_dim, 
                        transforms=None,
-                       retrieve_by_id=False, 
                        object_id=None, 
-                       shuffle=True, 
+                       shuffle=True,
+                       background_ext='JPEG',
+                       silhouette_ext='png', 
                        verbose=True):
         """
         Args:
-            dataroot (string): Root Directory of Stanford Cars dataset.
+            obj_dataroot (string): Root Directory of Stanford Cars dataset.
+            bgnd_dataroot (string): Root Directory of background image dataset.
+            sil_dataroot (string): Root Directory of silhouette image dataset.
             resize_dim (tuple(w, h)): Dimension to resize the images to.
-            retrieve_by_id (bool): Whether or not to retrieve images by their object id.
-            object_id (int): Object ID to retrieve data for - only applicable when `retrieve_by_id` is set.
+            object_id (int): Object ID to retrieve data for - set to None if all classes are needed.
             shuffle (bool): Whether or not to shuffle the dataset.
             verbose (bool): Whether or not to print additional information.
         """
-        self.dataroot = dataroot
+        self.obj_dataroot = obj_dataroot
+        self.bgnd_dataroot = bgnd_dataroot
+        self.sil_dataroot = sil_dataroot
         self.resize_dim = resize_dim
         self.transforms = transforms
-        self.retrieve_by_id = retrieve_by_id
         self.object_id = object_id
         self.shuffle = shuffle
         self.verbose = verbose
 
-        metadata_filename = os.path.join(dataroot, 'car_devkit/devkit/cars_meta.mat')
-        annotations_filename = os.path.join(dataroot, 'car_devkit/devkit/cars_train_annos.mat')
-        train_dir = os.path.join(dataroot, 'cars_train')
-        test_dir = os.path.join(dataroot, 'cars_test')
+        metadata_filename = os.path.join(obj_dataroot, 'car_devkit/devkit/cars_meta.mat')
+        annotations_filename = os.path.join(obj_dataroot, 'car_devkit/devkit/cars_train_annos.mat')
+        train_dir = os.path.join(obj_dataroot, 'cars_train')
+        test_dir = os.path.join(obj_dataroot, 'cars_test')
 
         # read metadata
         cars_metadata = {}
@@ -78,21 +85,31 @@ class StanfordCarsDataset(Dataset):
         # list of car type ids
         self.car_type_ids = list(self.annotations.keys())
 
+        # get background images
+        self.background_image_filenames = glob.glob(os.path.join(bgnd_dataroot, '*.'+background_ext))
+
+        # get silhouette images
+        self.silhouette_image_filenames = glob.glob(os.path.join(sil_dataroot, '*.'+silhouette_ext))
+
         # shuffle
         if shuffle == True:
             np.random.shuffle(self.id_filaneme_pairs)
+            np.random.shuffle(self.background_image_filenames)
+            np.random.shuffle(self.silhouette_image_filenames)
 
         # print stats
         if self.verbose:
-            print('Number of samples found in the dataset: {}'.format(self.__len__()))
+            print('Number of object samples found in the dataset: {}'.format(self.__len__()))
+            print('Number of background samples found in the dataset: {}'.format(len(self.background_image_filenames)))
+            print('Number of silhouette samples found in the dataset: {}'.format(len(self.silhouette_image_filenames)))
 
     # method to get length of data
-    def __len__(self):
-        if self.retrieve_by_id==False:
+    def __len__(self, object_id=None):
+        if object_id==None:
             return len(self.id_filaneme_pairs)
         else:
-            assert(self.object_id in self.car_type_ids)
-            return len(self.annotations[self.object_id])
+            assert(object_id in self.car_type_ids)
+            return len(self.annotations[object_id])
 
     # method to get resize shape
     def get_resize_dim(self):
@@ -111,9 +128,18 @@ class StanfordCarsDataset(Dataset):
         return self.id_filaneme_pairs
 
     # method to get a list of filenames corresponding to the object id
-    def get_filenames(self):
-        assert(self.object_id in self.get_object_type_ids())
-        return self.annotations[self.object_id]
+    def get_filenames(self, object_id=None):
+        assert(object_id in self.get_object_type_ids())
+        return self.annotations[object_id]
+
+    # method to get a list of background image filenames
+    def get_background_filenames(self):
+        return self.background_image_filenames
+
+    # method to get a list of silhouette image filenames
+    def get_silhouette_filenames(self):
+        return self.silhouette_image_filenames
+
 
     # method to get a dictionary of {object type: object_description} pairs
     def object_id_description_dict(self):
@@ -124,20 +150,20 @@ if __name__ == '__main__':
     import cv2
 
     ## dataset object
-    # dataset = StanfordCarsDataset( dataroot='/floppy/datasets/Stanford', 
-    #                                resize_dim=(256,256), 
-    #                                retrieve_by_id=True, 
-    #                                object_id=1, 
-    #                                verbose=True)
-    dataset = StanfordCarsDataset( dataroot='/floppy/datasets/Stanford', 
+    dataset = StanfordCarsDataset( obj_dataroot='/floppy/datasets/Stanford', 
+                                   bgnd_dataroot='/floppy/datasets/PoseGen/background',
+                                   sil_dataroot='/floppy/datasets/PoseGen/rendered_silhouette',
                                    resize_dim=(256,256),
                                    verbose=True)
 
     # display samples
-    for sample in dataset:
+    for i in range(dataset.__len__(1)):
+        sample = dataset.__getitem__(i, 1)
         cv2.namedWindow(sample['object_description'])
-        img_bgr = cv2.cvtColor(np.array(sample['image']), cv2.COLOR_RGB2BGR)
-        cv2.imshow(sample['object_description'], img_bgr)
+        obj_img_bgr = cv2.cvtColor(np.array(sample['obj_image']), cv2.COLOR_RGB2BGR)
+        bgnd_img_bgr = cv2.cvtColor(np.array(sample['bgnd_image']), cv2.COLOR_RGB2BGR)
+        sil_img_bgr = cv2.cvtColor(np.array(sample['sil_image']), cv2.COLOR_RGB2BGR)
+        cv2.imshow(sample['object_description'], cv2.hconcat([obj_img_bgr, bgnd_img_bgr, sil_img_bgr]))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     

@@ -26,10 +26,22 @@ def parse_args():
         help="Dataset to use for training the model.",
     )
     parser.add_argument(
-        "--data_dir",
+        "--obj_data_dir",
         type=str,
         default=os.path.join(root_dir, "data"),
-        help="Path to dataset directory.",
+        help="Path to object dataset directory.",
+    )
+    parser.add_argument(
+        "--bgnd_data_dir",
+        type=str,
+        default=os.path.join(root_dir, "data"),
+        help="Path to background dataset directory.",
+    )
+    parser.add_argument(
+        "--sil_data_dir",
+        type=str,
+        default=os.path.join(root_dir, "data"),
+        help="Path to silhouette dataset directory.",
     )
     parser.add_argument(
         "--out_dir",
@@ -91,13 +103,13 @@ def parse_args():
     parser.add_argument(
         "--eval_every",
         type=int,
-        default=500,
+        default=100,
         help="Number of steps between model evaluation.",
     )
     parser.add_argument(
         "--ckpt_every",
         type=int,
-        default=5000,
+        default=100,
         help="Number of steps between checkpointing.",
     )
     parser.add_argument(
@@ -119,8 +131,8 @@ def train(args):
     pprint.pprint(vars(args))
 
     # Setup dataset
-    if not os.path.exists(args.data_dir):
-        raise FileNotFoundError(f"Data directory 'args.data_dir' is not found.")
+    if not os.path.exists(args.obj_data_dir):
+        raise FileNotFoundError(f"Data directory 'args.obj_data_dir' is not found.")
 
     # Check existing experiment
     exp_dir = os.path.join(args.out_dir, args.name)
@@ -177,7 +189,8 @@ def train(args):
     }
     datasets = datasets[args.dataset]
     train_dataloader, eval_dataloader = get_dataloaders(
-        datasets, args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
+        datasets, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir, 
+        args.im_size, args.batch_size, eval_size, num_workers
     )
 
     # Configure trainer
