@@ -1,0 +1,1 @@
+python train.py --name=posegen_dataset --obj_data_dir=/floppy/datasets/PoseGen/cars --bgnd_data_dir=/floppy/datasets/PoseGen/background --sil_data_dir=/floppy/datasets/PoseGen/rendered_silhouette --dataset=PoseGenCarsDataset --resume

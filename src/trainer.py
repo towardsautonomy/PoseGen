@@ -376,9 +376,6 @@ class Trainer:
                             self.net_g,
                             self.net_d,
                             self.eval_dataloader,
-                            real_obj,
-                            real_bgnd,
-                            real_sil,
                             self.device,
                             train=True,
                         )

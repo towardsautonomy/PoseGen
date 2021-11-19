@@ -88,7 +88,7 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=64,
+        default=32,
         help="Minibatch size used during training.",
     )
     parser.add_argument(
