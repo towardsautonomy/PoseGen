@@ -32,42 +32,90 @@ class Dataset(torch.utils.data.Dataset):
         raise NotImplementedError
 
     # method to get each item
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, object_id=None):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
         sample = None
-        if self.retrieve_by_id==False:
+        if object_id == None:
             id_filename_pairs = self.get_id_filename_pairs()
             assert(idx < len(id_filename_pairs))
             id_filename_pair = id_filename_pairs[idx]
             obj_type_id = list(id_filename_pair.keys())[0]
             filename = list(id_filename_pair.values())[0]
-            image = Image.open(filename).resize(self.get_resize_dim())
+            # object image
+            obj_image = Image.open(filename).resize(self.get_resize_dim())
             # check for grayscale image
-            if image.mode == 'L':
-                image = ImageOps.colorize(image, black ="blue", white ="white")
+            if obj_image.mode == 'L':
+                obj_image = ImageOps.colorize(obj_image, black ="blue", white ="white")
             # perform transforms
             if self.get_transforms() is not None:
-                image = self.get_transforms()(image)
-            sample = { 'image': image,
+                obj_image = self.get_transforms()(obj_image)
+
+            # background image
+            bgnd_img_index = np.random.randint(0, len(self.get_background_filenames()))
+            bgnd_image = Image.open(self.get_background_filenames()[bgnd_img_index]).resize(self.get_resize_dim())
+            # check for grayscale image
+            if bgnd_image.mode == 'L':
+                bgnd_image = ImageOps.colorize(bgnd_image, black ="blue", white ="white")
+            # perform transforms
+            if self.get_transforms() is not None:
+                bgnd_image = self.get_transforms()(bgnd_image)
+
+            # silhouette image
+            sil_img_index = np.random.randint(0, len(self.get_silhouette_filenames()))
+            sil_image = Image.open(self.get_silhouette_filenames()[sil_img_index]).resize(self.get_resize_dim())
+            # check for grayscale image
+            if bgnd_image.mode == 'L':
+                sil_image = ImageOps.colorize(sil_image, black ="blue", white ="white")
+            # perform transforms
+            if self.get_transforms() is not None:
+                sil_image = self.get_transforms()(sil_image)
+
+            sample = { 'obj_image': obj_image,
+                       'bgnd_image': bgnd_image,
+                       'sil_image': sil_image,
                        'object_type_id': obj_type_id,
                        'object_description': self.object_id_description_dict()[obj_type_id]
                      }
         else:
-            if self.object_id in self.get_object_type_ids():
-                filenames = self.get_filenames(self.object_id)
+            if object_id in self.get_object_type_ids():
+                filenames = self.get_filenames(object_id)
                 assert(idx < len(filenames))
-                image = Image.open(filenames[idx]).resize(self.get_resize_dim())
+                # object image
+                obj_image = Image.open(filenames[idx]).resize(self.get_resize_dim())
                 # check for grayscale image
-                if image.mode == 'L':
-                    image = ImageOps.colorize(image, black ="blue", white ="white")
+                if obj_image.mode == 'L':
+                    obj_image = ImageOps.colorize(obj_image, black ="blue", white ="white")
                 # perform transforms
                 if self.get_transforms() is not None:
-                    image = self.get_transforms()(image)
-                sample = { 'image': image,
-                           'object_type_id': self.object_id,
-                           'object_description': self.object_id_description_dict()[self.object_id]
+                    obj_image = self.get_transforms()(obj_image)
+
+                # background image
+                bgnd_img_index = np.random.randint(0, len(self.get_background_filenames()))
+                bgnd_image = Image.open(self.get_background_filenames()[bgnd_img_index]).resize(self.get_resize_dim())
+                # check for grayscale image
+                if bgnd_image.mode == 'L':
+                    bgnd_image = ImageOps.colorize(bgnd_image, black ="blue", white ="white")
+                # perform transforms
+                if self.get_transforms() is not None:
+                    bgnd_image = self.get_transforms()(bgnd_image)
+
+                # silhouette image
+                sil_img_index = np.random.randint(0, len(self.get_silhouette_filenames()))
+                sil_image = Image.open(self.get_silhouette_filenames()[sil_img_index]).resize(self.get_resize_dim())
+                # check for grayscale image
+                if bgnd_image.mode == 'L':
+                    sil_image = ImageOps.colorize(sil_image, black ="blue", white ="white")
+                # perform transforms
+                if self.get_transforms() is not None:
+                    sil_image = self.get_transforms()(sil_image)
+
+                sample = { 'obj_image': obj_image,
+                           'bgnd_image': bgnd_image,
+                           'sil_image': sil_image,
+                           'object_type_id': object_id,
+                           'object_description': self.object_id_description_dict()[object_id]
                         }
         return sample
 
@@ -104,6 +152,14 @@ class Dataset(torch.utils.data.Dataset):
         '''
         Returns a list of filenames
         '''
+        raise NotImplementedError
+
+    # method to get a list of background image filenames
+    def get_background_filenames(self):
+        raise NotImplementedError
+
+    # method to get a list of silhouette image filenames
+    def get_silhouette_filenames(self):
         raise NotImplementedError
 
     # method to get a list of [object type<->filename] pairs
