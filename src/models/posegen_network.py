@@ -183,7 +183,7 @@ class Decoder(nn.Module):
         return y
 
 
-class AutoEncoder(nn.Module):
+class PoseGen(nn.Module):
     def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, pretrain: bool = False):
         super().__init__()
         self.pretrain = pretrain

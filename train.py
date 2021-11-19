@@ -5,9 +5,9 @@ import argparse
 import torch
 import torch.optim as optim
 
-from src.datasets import StanfordCarsDataset
+from src.datasets import StanfordCarsDataset, PoseGenCarsDataset
 from src.utils import get_dataloaders
-from src.models import PoseGen_Discriminator, AutoEncoder, PoseGen_Generator
+from src.models import PoseGen_Discriminator, PoseGen_Generator, PoseGen
 from src.trainer import Trainer
 
 
@@ -22,7 +22,7 @@ def parse_args():
         "--dataset",
         type=str,
         default='StanfordCarsDataset',
-        choices=['StanfordCarsDataset'],
+        choices=['StanfordCarsDataset', 'PoseGenCarsDataset'],
         help="Dataset to use for training the model.",
     )
     parser.add_argument(
@@ -164,7 +164,7 @@ def train(args):
 
     # Setup models
     # net_g = PoseGen_Generator()
-    net_g = AutoEncoder(nz=nz, pretrain=args.pretrain)
+    net_g = PoseGen(nz=nz, pretrain=args.pretrain)
     # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
     net_d = PoseGen_Discriminator()
     # # Configure models
@@ -192,6 +192,7 @@ def train(args):
     # Configure dataloaders
     datasets = {
         "StanfordCarsDataset": StanfordCarsDataset,
+        "PoseGenCarsDataset": PoseGenCarsDataset,
     }
     dataset = datasets[args.dataset]
     train_dataloader, eval_dataloader = get_dataloaders(

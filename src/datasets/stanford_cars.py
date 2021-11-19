@@ -156,9 +156,11 @@ if __name__ == '__main__':
                                    resize_dim=(256,256),
                                    verbose=True)
 
+    ## get object type ids
+    object_type_ids = dataset.get_object_type_ids()
     # display samples
     for i in range(dataset.__len__(1)):
-        sample = dataset.__getitem__(i, 1)
+        sample = dataset.__getitem__(i, object_type_ids[0])
         cv2.namedWindow(sample['object_description'])
         obj_img_bgr = cv2.cvtColor(np.array(sample['obj_image']), cv2.COLOR_RGB2BGR)
         bgnd_img_bgr = cv2.cvtColor(np.array(sample['bgnd_image']), cv2.COLOR_RGB2BGR)

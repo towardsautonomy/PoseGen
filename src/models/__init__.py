@@ -12,4 +12,4 @@ from .stylegan2 import Discriminator as StyleGAN2_Discriminator
 from .stylegan3 import Generator as StyleGAN3_Generator
 from .posegen_network import Generator as PoseGen_Generator
 from .posegen_network import Discriminator as PoseGen_Discriminator
-from .posegen_network import AutoEncoder
+from .posegen_network import PoseGen

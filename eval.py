@@ -4,9 +4,9 @@ import argparse
 
 import torch
 
-from src.datasets import StanfordCarsDataset
+from src.datasets import StanfordCarsDataset, PoseGenCarsDataset
 from src.utils import get_dataloaders
-from src.models import AutoEncoder, PoseGen_Generator, PoseGen_Discriminator
+from src.models import PoseGen_Generator, PoseGen_Discriminator, PoseGen
 from src.trainer import evaluate
 
 
@@ -21,7 +21,7 @@ def parse_args():
         "--dataset",
         type=str,
         default='StanfordCarsDataset',
-        choices=['StanfordCarsDataset'],
+        choices=['StanfordCarsDataset', 'PoseGenCarsDataset'],
         help="Dataset to use for training the model.",
     )
     parser.add_argument(
@@ -68,13 +68,13 @@ def eval(args):
 
     # Set parameters
     nz, eval_size, num_workers = (
-        1024,
+        256,
         5000,
         4,
     )
 
     # Setup models
-    net_g = AutoEncoder()
+    net_g = PoseGen(nz=nz)
     net_d = PoseGen_Discriminator()
 
     # Loads checkpoint
@@ -82,14 +82,16 @@ def eval(args):
     net_g.load_state_dict(state_dict["net_g"])
     net_d.load_state_dict(state_dict["net_d"])
 
+    # Configure dataloaders
     datasets = {
         "StanfordCarsDataset": StanfordCarsDataset,
+        "PoseGenCarsDataset": PoseGenCarsDataset,
     }
-
+    dataset = datasets[args.dataset]
     # Configures eval dataloader
     _, eval_dataloader = get_dataloaders(
-        globals()[args.dataset], args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir,
-        args.im_size, args.batch_size, eval_size, num_workers,
+        dataset, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir, 
+        args.im_size, args.batch_size, eval_size, num_workers
     )
 
     # Evaluate models
