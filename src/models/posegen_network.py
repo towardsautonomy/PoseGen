@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from module import *
 
+
 class Generator(nn.Module):
     r"""
     ResNet backbone generator for SNGAN.
@@ -67,6 +68,7 @@ class Discriminator(nn.Module):
         self.block6 = DBlock(ndf >> 2, ndf >> 1, downsample=True)
         self.block7 = DBlock(ndf >> 1, ndf, downsample=True)
         self.l8 = SNLinear(ndf, 1)
+
         self.activation = nn.ReLU(True)
 
         nn.init.xavier_uniform_(self.l8.weight.data, 1.0)
@@ -84,6 +86,7 @@ class Discriminator(nn.Module):
         h = torch.sum(h, dim=(2, 3))
         y = self.l8(h)
         return y
+
 
 class Encoder(nn.Module):
     r"""
@@ -121,6 +124,7 @@ class Encoder(nn.Module):
         y = self.l8(h_final)
         return y, [h1, h2, h3, h4, h5, h6, h7, h8, h9]
 
+
 class Decoder(nn.Module):
     r"""
     ResNet backbone decoder architecture.
@@ -130,8 +134,9 @@ class Decoder(nn.Module):
         bottom_width (int): Starting width for upsampling generator output to an image.
     """
 
-    def __init__(self, nz=128, ngf=512, bottom_width=4, skip_connections=False, n_encoders=2):
+    def __init__(self, nz=128, ngf=512, bottom_width=4, skip_connections=False, n_encoders=2, pretrain: bool = False):
         super().__init__()
+        self.pretrain = pretrain
 
         self.skip_connections = skip_connections
 
@@ -150,48 +155,56 @@ class Decoder(nn.Module):
         nn.init.xavier_uniform_(self.l1.weight.data, 1.0)
         nn.init.xavier_uniform_(self.c8.weight.data, 1.0)
 
+    @staticmethod
+    def _expand_hs(h, pretrain):
+        return [None] * 9 if pretrain else h
+
     def forward(self, x, enc_hidden_layers):
-        h1_enc, h2_enc, h3_enc, h4_enc, h5_enc, h6_enc, h7_enc, h8_enc, h9_enc = enc_hidden_layers
+        add_skip_conn = self.skip_connections and not self.pretrain
+        h1_enc, h2_enc, h3_enc, h4_enc, h5_enc, h6_enc, h7_enc, h8_enc, h9_enc = self._expand_hs(enc_hidden_layers, 9)
         h1 = self.l1(x)
         h2 = self.unfatten(h1)
-        if self.skip_connections: h2 += h7_enc
+        if add_skip_conn: h2 += h7_enc
         h3 = self.block2(h2)
-        if self.skip_connections: h3 += h6_enc
+        if add_skip_conn: h3 += h6_enc
         h4 = self.block3(h3)
-        if self.skip_connections: h4 += h5_enc
+        if add_skip_conn: h4 += h5_enc
         h5 = self.block4(h4)
-        if self.skip_connections: h5 += h4_enc
+        if add_skip_conn: h5 += h4_enc
         h6 = self.block5(h5)
-        if self.skip_connections: h6 += h3_enc
+        if add_skip_conn: h6 += h3_enc
         h7 = self.block6(h6)
-        if self.skip_connections: h7 += h2_enc
+        if add_skip_conn: h7 += h2_enc
         h8 = self.block7(h7)
         h9 = self.b8(h8)
         h10 = self.activation(h9)
         h_final = self.c8(h10)
         y = torch.tanh(h_final)
-        
-        return y        
+        return y
+
+
 class AutoEncoder(nn.Module):
-    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4):
+    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, pretrain: bool = False):
         super().__init__()
+        self.pretrain = pretrain
         # object appearance encoder
         self.obj_appear_enc = Encoder(ndf, nz)
         # background encoder
         self.background_enc = Encoder(ndf, nz)
         # pose encoder
         self.pose_enc = Encoder(ndf, nz)
-        self.dec = Decoder(nz, ngf, bottom_width, skip_connections=True, n_encoders=3)
+        self.dec = Decoder(nz, ngf, bottom_width, skip_connections=True, n_encoders=3, pretrain=pretrain)
 
     def forward(self, x_obj, x_bgnd, x_silhouette):
         z_appear, appear_hidden_features = self.obj_appear_enc(x_obj)
-        z_bgnd, bgnd_hidden_features = self.background_enc(x_bgnd)
-        z_pose, pose_hidden_features = self.pose_enc(x_silhouette)
-        # concatenate latent vectors
-        z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
-        # hidden features
-        hidden_features = [a + b + c for a, b, c in \
-                            zip(appear_hidden_features, bgnd_hidden_features, pose_hidden_features)]
+        if self.pretrainA:
+            z = z_appear
+            bgnd_hidden_features = None
+        else:
+            z_bgnd, bgnd_hidden_features = self.background_enc(x_bgnd)
+            z_pose, pose_hidden_features = self.pose_enc(x_silhouette)
+            # concatenate latent vectors
+            z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
         # reconstruct
         out = self.dec(z, bgnd_hidden_features)
         return out

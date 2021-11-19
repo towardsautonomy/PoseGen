@@ -65,6 +65,12 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--pretrain",
+        default=False,
+        action="store_true",
+        help="pretrain just the appearance encoder (ignores silhouette and background) in an autoencoder setup.",
+    )
+    parser.add_argument(
         "--resume",
         default=False,
         action="store_true",
@@ -158,7 +164,7 @@ def train(args):
 
     # Setup models
     # net_g = PoseGen_Generator()
-    net_g = AutoEncoder(nz=nz)
+    net_g = AutoEncoder(nz=nz, pretrain=args.pretrain)
     # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
     net_d = PoseGen_Discriminator()
     # # Configure models
@@ -187,9 +193,9 @@ def train(args):
     datasets = {
         "StanfordCarsDataset": StanfordCarsDataset,
     }
-    datasets = datasets[args.dataset]
+    dataset = datasets[args.dataset]
     train_dataloader, eval_dataloader = get_dataloaders(
-        datasets, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir, 
+        dataset, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir,
         args.im_size, args.batch_size, eval_size, num_workers
     )
 
@@ -207,6 +213,7 @@ def train(args):
         log_dir,
         ckpt_dir,
         torch.device(args.device),
+        args.pretrain,
     )
 
     # Train model

@@ -82,9 +82,14 @@ def eval(args):
     net_g.load_state_dict(state_dict["net_g"])
     net_d.load_state_dict(state_dict["net_d"])
 
+    datasets = {
+        "StanfordCarsDataset": StanfordCarsDataset,
+    }
+
     # Configures eval dataloader
     _, eval_dataloader = get_dataloaders(
-        globals()[args.dataset], args.data_dir, args.im_size, args.batch_size, eval_size, num_workers
+        globals()[args.dataset], args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir,
+        args.im_size, args.batch_size, eval_size, num_workers,
     )
 
     # Evaluate models

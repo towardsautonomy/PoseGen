@@ -3,8 +3,10 @@ import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
+
 def collate_fn(batch):
     return [(b['image']) for b in batch]
+
 
 def get_dataloaders(dataset, obj_data_dir, bgnd_data_dir, sil_data_dir, imsize, batch_size, eval_size, num_workers=1):
     r"""

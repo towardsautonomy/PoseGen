@@ -107,7 +107,7 @@ def train_step(net, opt, sch, compute_loss):
     return loss
 
 
-def evaluate(net_g, net_d, dataloader, real_obj, real_bgnd, real_sil, device, train=False):
+def evaluate(net_g, net_d, dataloader, device, train=False):
     r"""
     Evaluates model and logs metrics.
     Attributes:
@@ -230,6 +230,7 @@ class Trainer:
         log_dir,
         ckpt_dir,
         device,
+        pretrain: bool,
     ):
         # Setup models, dataloader, optimizers
         self.net_g = net_g.to(device)
@@ -240,6 +241,7 @@ class Trainer:
         self.sch_d = sch_d
         self.train_dataloader = train_dataloader
         self.eval_dataloader = eval_dataloader
+        self.pretrain = pretrain
 
         # Setup training parameters
         self.device = device
@@ -362,7 +364,7 @@ class Trainer:
                 real_obj = data['obj_image'].to(self.device)
                 real_bgnd = data['bgnd_image'].to(self.device)
                 real_sil = data['sil_image'].to(self.device)
-                loss_d = self._train_step_d(real_obj, real_bgnd, real_sil)  # TODO: revert
+                loss_d = self._train_step_d(real_obj, real_bgnd, real_sil)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(real_obj, real_bgnd, real_sil)
 
@@ -376,9 +378,6 @@ class Trainer:
                             self.net_g,
                             self.net_d,
                             self.eval_dataloader,
-                            real_obj,
-                            real_bgnd,
-                            real_sil,
                             self.device,
                             train=True,
                         )
