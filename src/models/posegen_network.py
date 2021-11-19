@@ -197,7 +197,7 @@ class PoseGen(nn.Module):
 
     def forward(self, x_obj, x_bgnd, x_silhouette):
         z_appear, appear_hidden_features = self.obj_appear_enc(x_obj)
-        if self.pretrainA:
+        if self.pretrain:
             z = z_appear
             bgnd_hidden_features = None
         else:
