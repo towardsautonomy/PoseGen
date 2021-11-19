@@ -30,8 +30,8 @@ class StanfordCarsDataset(Dataset):
                        transforms=None,
                        object_id=None, 
                        shuffle=True,
-                       background_ext='jpg',
-                       silhouette_ext='jpg',
+                       background_ext='JPEG',
+                       silhouette_ext='png',
                        verbose=True):
         """
         Args:
