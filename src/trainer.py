@@ -128,7 +128,7 @@ def evaluate(net_g, net_d, dataloader, device, train=False):
         is_, fid, kid, loss_gs, loss_ds, real_preds, fake_preds = (
             IS().to(device),
             FID().to(device),
-            KID().to(device),
+            KID(subset_size=32).to(device),
             [],
             [],
             [],
@@ -247,7 +247,6 @@ class Trainer:
         self.step = 0
 
         # Setup checkpointing, evaluation and logging
-        self.fixed_z = torch.randn((36, nz), device=device)
         self.logger = tbx.SummaryWriter(log_dir)
         self.ckpt_dir = ckpt_dir
 

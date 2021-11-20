@@ -88,7 +88,7 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,
+        default=64,
         help="Minibatch size used during training.",
     )
     parser.add_argument(
@@ -103,13 +103,13 @@ def parse_args():
     parser.add_argument(
         "--eval_every",
         type=int,
-        default=100,
+        default=500,
         help="Number of steps between model evaluation.",
     )
     parser.add_argument(
         "--ckpt_every",
         type=int,
-        default=100,
+        default=500,
         help="Number of steps between checkpointing.",
     )
     parser.add_argument(
@@ -154,22 +154,13 @@ def train(args):
     torch.manual_seed(args.seed)
 
     # Set parameters
-    nz, lr, betas, eval_size, num_workers = (256, 2e-4, (0.0, 0.9), 1000, 4)
+    nz, lr, betas, eval_split, num_workers = (256, 2e-4, (0.0, 0.9), 0.1, 8)
 
     # Setup models
     # net_g = PoseGen_Generator()
     net_g = PoseGen(nz=nz)
     # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
     net_d = PoseGen_Discriminator()
-    # # Configure models
-    # if args.im_size == 32:
-    #     net_g = Generator32()
-    #     net_d = Discriminator32()
-    # elif args.im_size == 64:
-    #     net_g = Generator64()
-    #     net_d = Discriminator64()
-    # else:
-    #     raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
 
     # Configure optimizers
     opt_g = optim.Adam(net_g.parameters(), lr, betas)
@@ -191,7 +182,7 @@ def train(args):
     dataset = datasets[args.dataset]
     train_dataloader, eval_dataloader = get_dataloaders(
         dataset, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir, 
-        args.im_size, args.batch_size, eval_size, num_workers
+        args.im_size, args.batch_size, eval_split, num_workers
     )
 
     # Configure trainer

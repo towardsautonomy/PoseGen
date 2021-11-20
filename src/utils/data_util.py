@@ -6,7 +6,7 @@ import torchvision.datasets as datasets
 def collate_fn(batch):
     return [(b['image']) for b in batch]
 
-def get_dataloaders(dataset, obj_data_dir, bgnd_data_dir, sil_data_dir, imsize, batch_size, eval_size, num_workers=1):
+def get_dataloaders(dataset, obj_data_dir, bgnd_data_dir, sil_data_dir, imsize, batch_size, eval_split=0.1, num_workers=16):
     r"""
     Creates a dataloader from a directory containing image data.
     """
@@ -27,6 +27,7 @@ def get_dataloaders(dataset, obj_data_dir, bgnd_data_dir, sil_data_dir, imsize, 
         shuffle=True,
         verbose=True,
     )
+    eval_size = int(len(dataset) * eval_split)
     eval_dataset, train_dataset = torch.utils.data.random_split(
         dataset,
         [eval_size, len(dataset) - eval_size],

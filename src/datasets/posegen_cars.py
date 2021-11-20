@@ -64,19 +64,21 @@ class PoseGenCarsDataset(Dataset):
         car_models = os.listdir(self.obj_dataroot)
         # build list of objects
         for car_type_id, car_model in enumerate(car_models):
-            self.car_type_ids.append(car_type_id)
-            filenames = glob.glob(os.path.join(self.obj_dataroot, '{}/*.{}'.format(car_model, cars_ext)))
-            for filename in filenames:
-                if os.path.exists(filename):
-                    if car_type_id in self.annotations.keys():
-                        self.annotations[car_type_id].append(filename)
-                    else:
-                        self.annotations[car_type_id] = [filename]
-                        self.id_description_dict[car_type_id] = car_model
-                    self.id_filaneme_pairs.append({car_type_id: filename})
+            places = os.listdir(os.path.join(self.obj_dataroot, car_model))
+            for place in places:
+                self.car_type_ids.append(car_type_id)
+                filenames = glob.glob(os.path.join(self.obj_dataroot, car_model, place, '*.{}'.format(cars_ext)))
+                for filename in filenames:
+                    if os.path.exists(filename):
+                        if car_type_id in self.annotations.keys():
+                            self.annotations[car_type_id].append(filename)
+                        else:
+                            self.annotations[car_type_id] = [filename]
+                            self.id_description_dict[car_type_id] = car_model
+                        self.id_filaneme_pairs.append({car_type_id: filename})
 
         # get background images
-        self.background_image_filenames = glob.glob(os.path.join(bgnd_dataroot, '*.'+background_ext))
+        self.background_image_filenames = glob.glob(os.path.join(bgnd_dataroot, '*/*.'+background_ext))
 
         # get silhouette images
         self.silhouette_image_filenames = glob.glob(os.path.join(sil_dataroot, '*.'+silhouette_ext))

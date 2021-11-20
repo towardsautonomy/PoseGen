@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,
+        default=64,
         help="Minibatch size used during evaluation.",
     )
     parser.add_argument(
