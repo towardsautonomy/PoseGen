@@ -8,6 +8,7 @@ __pycache__/
 *.pth
 events.*
 data/*
+.ipynb_checkpoints
 
 # add sample dataset
 !data/background_samples

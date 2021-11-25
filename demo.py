@@ -124,8 +124,8 @@ def demo(args):
         print("Loaded checkpoint '{}'".format(ckpt_path))
 
     # get filenames
-    obj_files = sorted(glob.glob(os.path.join(args.obj_data_dir, "*.png")))
-    bgnd_files = sorted(glob.glob(os.path.join(args.bgnd_data_dir, "*.png")))
+    obj_files = sorted(glob.glob(os.path.join(args.obj_data_dir, "*.JPEG")))
+    bgnd_files = sorted(glob.glob(os.path.join(args.bgnd_data_dir, "*.JPEG")))
     sil_files = sorted(glob.glob(os.path.join(args.sil_data_dir, "*.png")))
 
     # check if number of files are greater than 0
@@ -149,9 +149,10 @@ def demo(args):
     bgnd_file = np.random.choice(bgnd_files)
     sil_file = np.random.choice(sil_files)
 
-    for bgnd_file in bgnd_files:
-    # vary the silhouette file and visualize the result
-    # for sil_file in sil_files:
+    # for obj_file in obj_files:
+    # for bgnd_file in bgnd_files:
+    for sil_file in sil_files:
+        
         # object image
         obj_image = Image.open(obj_file).resize((args.im_size, args.im_size))
         obj_image_copy = np.array(obj_image).copy()

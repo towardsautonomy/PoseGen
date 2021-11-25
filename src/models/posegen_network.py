@@ -173,7 +173,7 @@ class Decoder(nn.Module):
         
         return y        
 class PoseGen(nn.Module):
-    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, skip_connections: bool = False, n_encoders: int = 3):
+    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, skip_connections: bool = True, n_encoders: int = 3):
         super().__init__()
         # object appearance encoder
         self.obj_appear_enc = Encoder(ndf, nz)

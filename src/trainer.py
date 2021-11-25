@@ -59,23 +59,27 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_g, lambda_g=1.0, lambda_mse=1.5):
+def compute_loss_g(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_g, lambda_g=1.0, lambda_mse=2.5, pretrain=False):
     r"""
     General implementation to compute generator loss.
     """
-
     fakes = net_g(real_obj, real_bgnd, real_sil)
     fake_preds = net_d(fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
-    # # reconstruction loss
-    # loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(reals, fakes)
-    # loss_g += loss_rec
 
-    # reconstruction loss
-    masked_bgnd = real_bgnd * (1.0-real_sil)
-    masked_gen = fakes * (1.0-real_sil)
-    loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(masked_bgnd, masked_gen)
-    loss_g += loss_rec
+    if pretrain:
+        # reconstruction loss
+        loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(real_obj, fakes)
+        loss_g += loss_rec
+
+    else:
+        inverted_sil = 1.0 - ((real_sil / 2.0) + 0.5)
+        # reconstruction loss
+        masked_bgnd = real_bgnd * inverted_sil
+        masked_gen = fakes * inverted_sil
+        loss_rec = lambda_mse * \
+                    torch.mean(inverted_sil * torch.nn.MSELoss(reduction='none')(masked_bgnd, masked_gen))
+        loss_g += loss_rec
     return loss_g, fakes, fake_preds
 
 
