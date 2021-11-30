@@ -1,5 +1,4 @@
 import functools
-import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Sequence, Tuple
@@ -53,6 +52,7 @@ class CarWithMask:
 
     @staticmethod
     def _frame_to_image(frame: NumpyNdArray) -> PILImage:
+        # TODO: this will be a generated image. Is this the right way to read?
         return Image.fromarray(frame.astype("uint8"), "RGB")
 
     @property

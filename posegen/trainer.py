@@ -3,14 +3,13 @@ import os
 
 from tqdm import tqdm
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.tensorboard as tbx
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
 import torchvision.utils as vutils
-from torchmetrics import IS, FID, KID
+from torchmetrics import IS, KID
 import wandb
+
+from .metrics import FIDBetter, IoU
 
 
 def prepare_data_for_inception(x, device):
@@ -133,13 +132,15 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
         # Initialize metrics
         is_, fid, kid, loss_gs, loss_ds, real_preds, fake_preds = (
             IS().to(device),
-            FID().to(device),
+            FIDBetter().to(device),
             KID(subset_size=32).to(device),
             [],
             [],
             [],
             [],
         )
+        fake_images_list = []
+        real_poses_list = []
 
         for data in tqdm(dataloader, desc="Evaluating Model"):
 
@@ -148,6 +149,8 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
             real_obj = data['obj_image'].to(device)
             real_bgnd = data['bgnd_image'].to(device)
             real_sil = data['sil_image'].to(device)
+            real_poses_list.append(real_sil)
+
             loss_d, fakes, real_pred, fake_pred = compute_loss_d(
                 net_g,
                 net_d,
@@ -156,6 +159,7 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
                 real_sil,
                 hinge_loss_d,
             )
+            fake_images_list.append(fakes)
             loss_g, _, _ = compute_loss_g(
                 net_g,
                 net_d,
@@ -187,8 +191,8 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
             f"{prefix}IS": is_.compute()[0].item(),
             f"{prefix}FID": fid.compute().item(),
             f"{prefix}KID": kid.compute()[0].item(),
-            # TODO: add IoU
-            # TODO: add sim
+            f"{prefix}IoUMean": IoU(real_poses_list, fake_images_list).compute(),
+            f"{prefix}InceptionSimMean": fid.sim(),
         }
 
         # Create samples
