@@ -45,12 +45,8 @@ def get_dataloaders(
         torch.utils.data.DataLoader,
         batch_size=batch_size, num_workers=num_workers,
     )
-    eval_dataloader = dl_partial(dataset=eval, shuffle=False)
-    train_dataloader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
-    )
+    dl_train = dl_partial(dataset=train, shuffle=True)
+    dl_eval = dl_partial(dataset=evaluation, shuffle=False)
+    dl_test = dl_partial(dataset=test, shuffle=True)
 
-    return train_dataloader, eval_dataloader
+    return dl_train, dl_eval, dl_test

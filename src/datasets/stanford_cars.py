@@ -1,25 +1,23 @@
-# import packages
 import os
-import sys
-import copy
+# import sys
 import glob
 import numpy as np
 import scipy
 import scipy.io
 from dataset import Dataset
 
-from utils import *
+# from utils import *
 
 # Ignore warnings
-import warnings
-warnings.filterwarnings("ignore")
+# import warnings
+# warnings.filterwarnings("ignore")
 
 
 # add path to sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UTILS_DIR = os.path.dirname(os.path.abspath('src/utils'))
-sys.path.append(BASE_DIR)
-sys.path.append(UTILS_DIR)
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# UTILS_DIR = os.path.dirname(os.path.abspath('src/utils'))
+# sys.path.append(BASE_DIR)
+# sys.path.append(UTILS_DIR)
 
 
 # Dataset Class
