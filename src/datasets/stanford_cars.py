@@ -4,7 +4,7 @@ import glob
 import numpy as np
 import scipy
 import scipy.io
-from dataset import Dataset
+from .dataset import Dataset
 
 # from utils import *
 
