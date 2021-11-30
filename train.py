@@ -26,22 +26,10 @@ def parse_args():
         help="Dataset to use for training the model.",
     )
     parser.add_argument(
-        "--obj_data_dir",
+        "--data_dir",
         type=str,
         default=os.path.join(root_dir, "data"),
         help="Path to object dataset directory.",
-    )
-    parser.add_argument(
-        "--bgnd_data_dir",
-        type=str,
-        default=os.path.join(root_dir, "data"),
-        help="Path to background dataset directory.",
-    )
-    parser.add_argument(
-        "--sil_data_dir",
-        type=str,
-        default=os.path.join(root_dir, "data"),
-        help="Path to silhouette dataset directory.",
     )
     parser.add_argument(
         "--out_dir",
@@ -131,8 +119,8 @@ def train(args):
     pprint.pprint(vars(args))
 
     # Setup dataset
-    if not os.path.exists(args.obj_data_dir):
-        raise FileNotFoundError(f"Data directory 'args.obj_data_dir' is not found.")
+    if not os.path.exists(args.data_dir):
+        raise FileNotFoundError('Data directory {} is not found.'.format(args.data_dir))
 
     # Check existing experiment
     exp_dir = os.path.join(args.out_dir, args.name)
@@ -181,8 +169,7 @@ def train(args):
     }
     dataset = datasets[args.dataset]
     train_dataloader, eval_dataloader = get_dataloaders(
-        dataset, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir, 
-        args.im_size, args.batch_size, eval_split, num_workers
+        dataset, args.data_dir, args.im_size, args.batch_size, eval_split, num_workers
     )
 
     # Configure trainer

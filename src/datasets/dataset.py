@@ -44,36 +44,36 @@ class Dataset(torch.utils.data.Dataset):
             obj_type_id = list(id_filename_pair.keys())[0]
             filename = list(id_filename_pair.values())[0]
             # object image
-            obj_image = Image.open(filename).resize(self.get_resize_dim())
+            obj_image = Image.open(filename['image']).resize(self.get_resize_dim())
             # check for grayscale image
             if obj_image.mode == 'L':
-                obj_image = ImageOps.colorize(obj_image, black ="blue", white ="white")
+                obj_image = ImageOps.colorize(obj_image, black ="black", white ="white")
             # perform transforms
             if self.get_transforms() is not None:
                 obj_image = self.get_transforms()(obj_image)
 
-            # background image
-            bgnd_img_index = np.random.randint(0, len(self.get_background_filenames()))
-            bgnd_image = Image.open(self.get_background_filenames()[bgnd_img_index]).resize(self.get_resize_dim())
+            # target image
+            target_idx = np.random.randint(0, len(id_filename_pairs))
+            target_id_filename_pair = id_filename_pairs[target_idx]
+            target_filename = list(target_id_filename_pair.values())[0]
+            target_image = Image.open(target_filename['image']).resize(self.get_resize_dim())
             # check for grayscale image
-            if bgnd_image.mode == 'L':
-                bgnd_image = ImageOps.colorize(bgnd_image, black ="blue", white ="white")
+            if target_image.mode == 'L':
+                target_image = ImageOps.colorize(target_image, black ="black", white ="white")
             # perform transforms
             if self.get_transforms() is not None:
-                bgnd_image = self.get_transforms()(bgnd_image)
+                target_image = self.get_transforms()(target_image)
 
-            # silhouette image
-            sil_img_index = np.random.randint(0, len(self.get_silhouette_filenames()))
-            sil_image = Image.open(self.get_silhouette_filenames()[sil_img_index]).resize(self.get_resize_dim())
+            sil_image = Image.open(target_filename['mask']).resize(self.get_resize_dim())
             # check for grayscale image
-            if bgnd_image.mode == 'L':
-                sil_image = ImageOps.colorize(sil_image, black ="blue", white ="white")
+            if sil_image.mode == 'L':
+                sil_image = ImageOps.colorize(sil_image, black ="black", white ="white")
             # perform transforms
             if self.get_transforms() is not None:
                 sil_image = self.get_transforms()(sil_image)
 
-            sample = { 'obj_image': obj_image,
-                       'bgnd_image': bgnd_image,
+            sample = { 'ref_image': obj_image,
+                       'target_image': target_image,
                        'sil_image': sil_image,
                        'object_type_id': obj_type_id,
                        'object_description': self.object_id_description_dict()[obj_type_id]
@@ -83,37 +83,37 @@ class Dataset(torch.utils.data.Dataset):
                 filenames = self.get_filenames(object_id)
                 assert(idx < len(filenames))
                 # object image
-                obj_image = Image.open(filenames[idx]).resize(self.get_resize_dim())
+                obj_image = Image.open(filenames[idx]['image']).resize(self.get_resize_dim())
                 # check for grayscale image
                 if obj_image.mode == 'L':
-                    obj_image = ImageOps.colorize(obj_image, black ="blue", white ="white")
+                    obj_image = ImageOps.colorize(obj_image, black ="black", white ="white")
                 # perform transforms
                 if self.get_transforms() is not None:
                     obj_image = self.get_transforms()(obj_image)
 
-                # background image
-                bgnd_img_index = np.random.randint(0, len(self.get_background_filenames()))
-                bgnd_image = Image.open(self.get_background_filenames()[bgnd_img_index]).resize(self.get_resize_dim())
+                # target image
+                target_idx = np.random.randint(0, len(filenames))
+                target_id_filename_pair = filenames[target_idx]
+                target_filename = list(target_id_filename_pair.values())[0]
+                target_image = Image.open(target_filename['image']).resize(self.get_resize_dim())
                 # check for grayscale image
-                if bgnd_image.mode == 'L':
-                    bgnd_image = ImageOps.colorize(bgnd_image, black ="blue", white ="white")
+                if target_image.mode == 'L':
+                    target_image = ImageOps.colorize(target_image, black ="black", white ="white")
                 # perform transforms
                 if self.get_transforms() is not None:
-                    bgnd_image = self.get_transforms()(bgnd_image)
+                    target_image = self.get_transforms()(target_image)
 
                 # silhouette image
-                sil_img_index = np.random.randint(0, len(self.get_silhouette_filenames()))
-                sil_image = Image.open(self.get_silhouette_filenames()[sil_img_index]).resize(self.get_resize_dim())
+                sil_image = Image.open(filenames[target_idx]['mask']).resize(self.get_resize_dim())
                 # check for grayscale image
-                if bgnd_image.mode == 'L':
-                    sil_image = ImageOps.colorize(sil_image, black ="blue", white ="white")
+                if sil_image.mode == 'L':
+                    sil_image = ImageOps.colorize(sil_image, black ="black", white ="white")
                 # perform transforms
                 if self.get_transforms() is not None:
                     sil_image = self.get_transforms()(sil_image)
 
-                sample = { 'obj_image': obj_image,
-                           'bgnd_image': bgnd_image,
-                           'sil_image': sil_image,
+                sample = { 'ref_image': obj_image,
+                           'target_image': target_image,
                            'object_type_id': object_id,
                            'object_description': self.object_id_description_dict()[object_id]
                         }

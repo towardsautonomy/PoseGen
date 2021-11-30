@@ -59,11 +59,11 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_g, lambda_g=1.0, lambda_mse=2.5, pretrain=False):
+def compute_loss_g(net_g, net_d, real_obj, target_obj, real_sil, loss_func_g, lambda_g=0.2, lambda_mse=10.0, pretrain=False):
     r"""
     General implementation to compute generator loss.
     """
-    fakes = net_g(real_obj, real_bgnd, real_sil)
+    fakes = net_g(real_obj, real_sil)
     fake_preds = net_d(fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
 
@@ -74,22 +74,23 @@ def compute_loss_g(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_g, lam
 
     else:
         inverted_sil = 1.0 - ((real_sil / 2.0) + 0.5)
+        obj_mask = (real_sil / 2.0) + 0.5
         # reconstruction loss
-        masked_bgnd = real_bgnd * inverted_sil
-        masked_gen = fakes * inverted_sil
+        masked_obj = target_obj * obj_mask
+        masked_gen = fakes * obj_mask
         loss_rec = lambda_mse * \
-                    torch.mean(inverted_sil * torch.nn.MSELoss(reduction='none')(masked_bgnd, masked_gen))
+                    torch.mean(obj_mask * torch.nn.SmoothL1Loss(reduction='none')(masked_obj, masked_gen))
         loss_g += loss_rec
     return loss_g, fakes, fake_preds
 
 
-def compute_loss_d(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_d):
+def compute_loss_d(net_g, net_d, real_obj, real_sil, loss_func_d):
     r"""
     General implementation to compute discriminator loss.
     """
 
     real_preds = net_d(real_obj).view(-1)
-    fakes = net_g(real_obj, real_bgnd, real_sil).detach()
+    fakes = net_g(real_obj, real_sil).detach()
     fake_preds = net_d(fakes).view(-1)
     loss_d = loss_func_d(real_preds, fake_preds)
 
@@ -143,14 +144,13 @@ def evaluate(net_g, net_d, dataloader, device, train=False):
 
             # Compute losses and save intermediate outputs
             # reals, z = prepare_data_for_gan(data['image'], nz, device)
-            real_obj = data['obj_image'].to(device)
-            real_bgnd = data['bgnd_image'].to(device)
+            real_obj = data['ref_image'].to(device)
+            target_obj = data['target_image'].to(device)
             real_sil = data['sil_image'].to(device)
             loss_d, fakes, real_pred, fake_pred = compute_loss_d(
                 net_g,
                 net_d,
                 real_obj, 
-                real_bgnd, 
                 real_sil,
                 hinge_loss_d,
             )
@@ -158,7 +158,7 @@ def evaluate(net_g, net_d, dataloader, device, train=False):
                 net_g,
                 net_d,
                 real_obj, 
-                real_bgnd, 
+                target_obj,
                 real_sil,
                 hinge_loss_g
             )
@@ -191,15 +191,15 @@ def evaluate(net_g, net_d, dataloader, device, train=False):
         if train:
             true_samples = real_obj.cpu()
             true_samples = vutils.make_grid(true_samples, nrow=8, padding=4, normalize=True)
-            bgnd_samples = real_bgnd.cpu()
-            bgnd_samples = vutils.make_grid(bgnd_samples, nrow=8, padding=4, normalize=True)
+            target_samples = target_obj.cpu()
+            target_samples = vutils.make_grid(target_samples, nrow=8, padding=4, normalize=True)
             sil_samples = real_sil.cpu()
             sil_samples = vutils.make_grid(sil_samples, nrow=8, padding=4, normalize=True)
-            fake_samples = net_g(real_obj, real_bgnd, real_sil)
+            fake_samples = net_g(real_obj, real_sil)
             fake_samples = F.interpolate(fake_samples, 256).cpu()
             fake_samples = vutils.make_grid(fake_samples, nrow=8, padding=4, normalize=True)
 
-    return metrics if not train else (metrics, true_samples, bgnd_samples, sil_samples, fake_samples)
+    return metrics if not train else (metrics, true_samples, target_samples, sil_samples, fake_samples)
 
 
 class Trainer:
@@ -293,7 +293,7 @@ class Trainer:
         ckpt_path = os.path.join(self.ckpt_dir, f"{self.step}.pth")
         torch.save(self._state_dict(), ckpt_path)
 
-    def _log(self, metrics, true_samples, bgnd_samples, sil_samples, fake_samples):
+    def _log(self, metrics, true_samples, target_samples, sil_samples, fake_samples):
         r"""
         Logs metrics and samples to Tensorboard.
         """
@@ -301,12 +301,12 @@ class Trainer:
         for k, v in metrics.items():
             self.logger.add_scalar(k, v, self.step)
         self.logger.add_image("real/object", true_samples, self.step)
-        self.logger.add_image("real/background", bgnd_samples, self.step)
+        self.logger.add_image("real/target", target_samples, self.step)
         self.logger.add_image("real/silhouette", sil_samples, self.step)
         self.logger.add_image("fake", fake_samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, real_obj, real_bgnd, real_sil):
+    def _train_step_g(self, real_obj, target_obj, real_sil):
         r"""
         Performs a generator training step.
         """
@@ -319,13 +319,13 @@ class Trainer:
                 self.net_g,
                 self.net_d,
                 real_obj, 
-                real_bgnd, 
+                target_obj,
                 real_sil,
                 hinge_loss_g,
             )[0],
         )
 
-    def _train_step_d(self, real_obj, real_bgnd, real_sil):
+    def _train_step_d(self, real_obj, real_sil):
         r"""
         Performs a discriminator training step.
         """
@@ -338,7 +338,6 @@ class Trainer:
                 self.net_g,
                 self.net_d,
                 real_obj, 
-                real_bgnd, 
                 real_sil,
                 hinge_loss_d,
             )[0],
@@ -362,12 +361,12 @@ class Trainer:
 
                 # Training step
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
-                real_obj = data['obj_image'].to(self.device)
-                real_bgnd = data['bgnd_image'].to(self.device)
+                real_obj = data['ref_image'].to(self.device)
+                target_obj = data['target_image'].to(self.device)
                 real_sil = data['sil_image'].to(self.device)
-                loss_d = self._train_step_d(real_obj, real_bgnd, real_sil)  # TODO: revert
+                loss_d = self._train_step_d(real_obj, real_sil)  # TODO: revert
                 if self.step % repeat_d == 0:
-                    loss_g = self._train_step_g(real_obj, real_bgnd, real_sil)
+                    loss_g = self._train_step_g(real_obj, target_obj, real_sil)
 
                 pbar.set_description(
                     f"L(G):{loss_g.item():.2f}|L(D):{loss_d.item():.2f}|{self.step}/{max_steps}"

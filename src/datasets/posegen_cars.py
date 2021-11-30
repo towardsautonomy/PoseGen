@@ -23,30 +23,22 @@ warnings.filterwarnings("ignore")
 # Dataset Class
 class PoseGenCarsDataset(Dataset):
 
-    def __init__(self, obj_dataroot, 
-                       bgnd_dataroot,
-                       sil_dataroot,
+    def __init__(self, dataroot, 
                        resize_dim, 
                        transforms=None,
                        object_id=None, 
                        shuffle=True,
-                       cars_ext='JPEG',
-                       background_ext='JPEG',
-                       silhouette_ext='png', 
+                       image_ext='JPEG',
                        verbose=True):
         """
         Args:
-            obj_dataroot (string): Root Directory of Stanford Cars dataset.
-            bgnd_dataroot (string): Root Directory of background image dataset.
-            sil_dataroot (string): Root Directory of silhouette image dataset.
+            dataroot (string): Root Directory of PoseGen Cars dataset.
             resize_dim (tuple(w, h)): Dimension to resize the images to.
             object_id (int): Object ID to retrieve data for - set to None if all classes are needed.
             shuffle (bool): Whether or not to shuffle the dataset.
             verbose (bool): Whether or not to print additional information.
         """
-        self.obj_dataroot = obj_dataroot
-        self.bgnd_dataroot = bgnd_dataroot
-        self.sil_dataroot = sil_dataroot
+        self.dataroot = dataroot
         self.resize_dim = resize_dim
         self.transforms = transforms
         self.object_id = object_id
@@ -61,39 +53,31 @@ class PoseGenCarsDataset(Dataset):
         # read annotations
         self.annotations = {}
         # get list of object types defined by dir names
-        car_models = os.listdir(self.obj_dataroot)
+        car_models = os.listdir(self.dataroot)
         # build list of objects
         for car_type_id, car_model in enumerate(car_models):
-            places = os.listdir(os.path.join(self.obj_dataroot, car_model))
-            for place in places:
-                self.car_type_ids.append(car_type_id)
-                filenames = glob.glob(os.path.join(self.obj_dataroot, car_model, place, '*.{}'.format(cars_ext)))
-                for filename in filenames:
-                    if os.path.exists(filename):
-                        if car_type_id in self.annotations.keys():
-                            self.annotations[car_type_id].append(filename)
-                        else:
-                            self.annotations[car_type_id] = [filename]
-                            self.id_description_dict[car_type_id] = car_model
-                        self.id_filaneme_pairs.append({car_type_id: filename})
-
-        # get background images
-        self.background_image_filenames = glob.glob(os.path.join(bgnd_dataroot, '*/*.'+background_ext))
-
-        # get silhouette images
-        self.silhouette_image_filenames = glob.glob(os.path.join(sil_dataroot, '*.'+silhouette_ext))
+            if os.path.isdir(os.path.join(self.dataroot, car_model)):
+                places = os.listdir(os.path.join(self.dataroot, car_model))
+                for place in places:
+                    self.car_type_ids.append(car_type_id)
+                    img_filenames = glob.glob(os.path.join(self.dataroot, car_model, place, 'image/*.{}'.format(image_ext)))
+                    for img_filename in img_filenames:
+                        sil_filename = img_filename.replace('image', 'mask')
+                        if os.path.exists(img_filename) and os.path.exists(sil_filename):
+                            if car_type_id in self.annotations.keys():
+                                self.annotations[car_type_id].append(img_filename)
+                            else:
+                                self.annotations[car_type_id] = [img_filename]
+                                self.id_description_dict[car_type_id] = car_model
+                            self.id_filaneme_pairs.append({car_type_id: {'image': img_filename, 'mask': sil_filename}})
 
         # shuffle
         if shuffle == True:
             np.random.shuffle(self.id_filaneme_pairs)
-            np.random.shuffle(self.background_image_filenames)
-            np.random.shuffle(self.silhouette_image_filenames)
 
         # print stats
         if self.verbose:
-            print('Number of object samples found in the dataset: {}'.format(self.__len__()))
-            print('Number of background samples found in the dataset: {}'.format(len(self.background_image_filenames)))
-            print('Number of silhouette samples found in the dataset: {}'.format(len(self.silhouette_image_filenames)))
+            print('Number of samples found in the dataset: {}'.format(self.__len__()))
 
     # method to get length of data
     def __len__(self, object_id=None):
@@ -120,14 +104,6 @@ class PoseGenCarsDataset(Dataset):
         assert(object_id in self.get_object_type_ids())
         return self.annotations[object_id]
 
-    # method to get a list of background image filenames
-    def get_background_filenames(self):
-        return self.background_image_filenames
-
-    # method to get a list of silhouette image filenames
-    def get_silhouette_filenames(self):
-        return self.silhouette_image_filenames
-
     # method to get a dictionary of {object type: object_description} pairs
     def object_id_description_dict(self):
         return self.id_description_dict
@@ -137,22 +113,20 @@ if __name__ == '__main__':
     import cv2
 
     ## dataset object
-    dataset = PoseGenCarsDataset( obj_dataroot='/floppy/datasets/PoseGen/cars', 
-                                   bgnd_dataroot='/floppy/datasets/PoseGen/background',
-                                   sil_dataroot='/floppy/datasets/PoseGen/rendered_silhouette',
-                                   resize_dim=(256,256),
-                                   verbose=True)
+    dataset = PoseGenCarsDataset( dataroot='/floppy/datasets/PoseGen_resized/cars', 
+                                  resize_dim=(256,256),
+                                  shuffle=True,
+                                  verbose=True)
 
     ## get object type ids
     object_type_ids = dataset.get_object_type_ids()
     # display samples
-    for i in range(dataset.__len__(1)):
-        sample = dataset.__getitem__(i, object_type_ids[0])
+    for sample in dataset:
         cv2.namedWindow(sample['object_description'])
-        obj_img_bgr = cv2.cvtColor(np.array(sample['obj_image']), cv2.COLOR_RGB2BGR)
-        bgnd_img_bgr = cv2.cvtColor(np.array(sample['bgnd_image']), cv2.COLOR_RGB2BGR)
+        ref_img_bgr = cv2.cvtColor(np.array(sample['ref_image']), cv2.COLOR_RGB2BGR)
+        target_img_bgr = cv2.cvtColor(np.array(sample['target_image']), cv2.COLOR_RGB2BGR)
         sil_img_bgr = cv2.cvtColor(np.array(sample['sil_image']), cv2.COLOR_RGB2BGR)
-        cv2.imshow(sample['object_description'], cv2.hconcat([obj_img_bgr, bgnd_img_bgr, sil_img_bgr]))
+        cv2.imshow(sample['object_description'], cv2.hconcat([ref_img_bgr, target_img_bgr, sil_img_bgr]))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     

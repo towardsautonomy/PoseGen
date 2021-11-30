@@ -173,7 +173,7 @@ class Decoder(nn.Module):
         
         return y        
 class PoseGen(nn.Module):
-    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, skip_connections: bool = True, n_encoders: int = 3):
+    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, skip_connections: bool = False, n_encoders: int = 2):
         super().__init__()
         # object appearance encoder
         self.obj_appear_enc = Encoder(ndf, nz)
@@ -183,15 +183,15 @@ class PoseGen(nn.Module):
         self.pose_enc = Encoder(ndf, nz)
         self.dec = Decoder(nz, ngf, bottom_width, skip_connections=skip_connections, n_encoders=n_encoders)
 
-    def forward(self, x_obj, x_bgnd, x_silhouette):
+    def forward(self, x_obj, x_silhouette):
         z_appear, appear_hidden_features = self.obj_appear_enc(x_obj)
-        z_bgnd, bgnd_hidden_features = self.background_enc(x_bgnd)
+        # z_bgnd, bgnd_hidden_features = self.background_enc(x_bgnd)
         z_pose, pose_hidden_features = self.pose_enc(x_silhouette)
         # concatenate latent vectors
-        z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
+        z = torch.cat((z_appear, z_pose), dim=1)
         # hidden features
-        hidden_features = [a + b + c for a, b, c in \
-                            zip(appear_hidden_features, bgnd_hidden_features, pose_hidden_features)]
+        hidden_features = [a + b for a, b in \
+                            zip(appear_hidden_features, pose_hidden_features)]
         # reconstruct
-        out = self.dec(z, bgnd_hidden_features)
+        out = self.dec(z, hidden_features)
         return out
