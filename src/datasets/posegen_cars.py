@@ -129,6 +129,7 @@ class PoseGenCarsDataset(Dataset):
     def object_id_description_dict(self):
         return self.id_description_dict
 
+
 # main function
 if __name__ == '__main__':
     import cv2
@@ -152,4 +153,3 @@ if __name__ == '__main__':
         cv2.imshow(sample['object_description'], cv2.hconcat([obj_img_bgr, bgnd_img_bgr, sil_img_bgr]))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-    
