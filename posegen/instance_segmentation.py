@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence
 
 from PIL import Image
+from PIL.Image import Image as PILImage
 import numpy as np
 import torch
 import torchvision
@@ -43,7 +44,7 @@ class InstanceSegmentation:
     def get_instance_segmentation(
         self,
         path: Optional[str] = None,
-        image: Optional[Frame] = None,
+        image: Optional[PILImage] = None,
     ) -> List[ObjectMask]:
         """
         Takes either a path to an image on disk or a PIL Image object.
@@ -71,7 +72,7 @@ class InstanceSegmentation:
 
 def get_mask(
     path: Optional[str] = None,
-    image: Optional[Image] = None,
+    image: Optional[PILImage] = None,
 ) -> Optional[BinaryMask]:
     # TODO: loads the model on each call => load once and run multiple times if this is a bottleneck
     res = InstanceSegmentation().get_instance_segmentation(path=path, image=image)
