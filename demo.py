@@ -8,7 +8,10 @@ import cv2
 
 import torch
 import torchvision.transforms as transforms
-from src.models import PoseGen
+from posegen.models import PoseGen
+
+IMG_MEAN = (0.5, 0.5, 0.5)
+IMG_STD = (0.5, 0.5, 0.5)
 
 
 def parse_args():
@@ -73,8 +76,6 @@ def parse_args():
 
     return parser.parse_args()
 
-IMG_MEAN = [0.5, 0.5, 0.5]
-IMG_STD = [0.5, 0.5, 0.5]
 
 def denormalize(x, mean=IMG_MEAN, std=IMG_STD):
     # 3, H, W, B
@@ -83,6 +84,7 @@ def denormalize(x, mean=IMG_MEAN, std=IMG_STD):
         t.mul_(s).add_(m)
     # B, 3, H, W
     return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2)
+
 
 def demo(args):
     r"""
@@ -195,6 +197,7 @@ def demo(args):
         img_viz = cv2.hconcat([obj_image_copy, bgnd_image_copy, sil_image_copy, gen_im])
         cv2.imshow("Generated Image", img_viz)
         cv2.waitKey(0)
+
 
 if __name__ == "__main__":
     demo(parse_args())

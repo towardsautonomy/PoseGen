@@ -1,14 +1,15 @@
 import os
-import pprint
 import argparse
+from typing import Tuple
 
 import torch
 import torch.optim as optim
+import wandb
 
-from src.datasets import PoseGenCarsDataset, StanfordCarsDataset
-from src.utils import get_dataloaders
-from src.models import PoseGen_Discriminator, PoseGen_Generator, PoseGen
-from src.trainer import Trainer
+from posegen.datasets import PoseGenCarsDataset, StanfordCarsDataset
+from posegen.utils import get_dataloaders
+from posegen.models import PoseGen_Discriminator, PoseGen
+from posegen.trainer import Trainer
 
 
 def parse_args():
@@ -122,21 +123,43 @@ def parse_args():
     return parser.parse_args()
 
 
-def train(args):
+def train(
+    dataset: str,
+    obj_data_dir: str,
+    out_dir: str,
+    name: str,
+    resume: bool,
+    seed: int,
+    repeat_d: int,
+    max_steps: int,
+    eval_every: int,
+    ckpt_every: int,
+    device: str,
+    nz: int,
+    lr: float,
+    betas: Tuple[float, float],
+    im_size: int,
+    batch_size: int,
+    bgnd_data_dir: str,
+    sil_data_dir: str,
+    eval_split: int,
+    num_workers: int,
+    wb: wandb.wandb_torch,
+):
     r"""
     Configures and trains model.
     """
 
     # Print command line arguments and architectures
-    pprint.pprint(vars(args))
+    # pprint.pprint(vars(args))
 
     # Setup dataset
-    if not os.path.exists(args.obj_data_dir):
+    if not os.path.exists(obj_data_dir):
         raise FileNotFoundError(f"Data directory 'args.obj_data_dir' is not found.")
 
     # Check existing experiment
-    exp_dir = os.path.join(args.out_dir, args.name)
-    if os.path.exists(exp_dir) and not args.resume:
+    exp_dir = os.path.join(out_dir, name)
+    if os.path.exists(exp_dir) and not resume:
         raise FileExistsError(
             f"Directory '{exp_dir}' already exists. "
             "Set '--resume' if you wish to resume training or "
@@ -146,15 +169,15 @@ def train(args):
     # Setup output directories
     log_dir = os.path.join(exp_dir, "log")
     ckpt_dir = os.path.join(exp_dir, "ckpt")
-    for d in [args.out_dir, exp_dir, log_dir, ckpt_dir]:
+    for d in [out_dir, exp_dir, log_dir, ckpt_dir]:
         if not os.path.exists(d):
             os.mkdir(d)
 
     # Fixed seed
-    torch.manual_seed(args.seed)
+    torch.manual_seed(seed)
 
     # Set parameters
-    nz, lr, betas, eval_split, num_workers = (256, 2e-4, (0.0, 0.9), 0.1, 8)
+    # nz, lr, betas, eval_split, num_workers = (256, 2e-4, (0.0, 0.9), 0.1, 8)
 
     # Setup models
     # net_g = PoseGen_Generator()
@@ -168,10 +191,10 @@ def train(args):
 
     # Configure schedulers
     sch_g = optim.lr_scheduler.LambdaLR(
-        opt_g, lr_lambda=lambda s: 1.0 - ((s * args.repeat_d) / args.max_steps)
+        opt_g, lr_lambda=lambda s: 1.0 - ((s * repeat_d) / max_steps)
     )
     sch_d = optim.lr_scheduler.LambdaLR(
-        opt_d, lr_lambda=lambda s: 1.0 - (s / args.max_steps)
+        opt_d, lr_lambda=lambda s: 1.0 - (s / max_steps)
     )
 
     # Configure dataloaders
@@ -179,10 +202,10 @@ def train(args):
         "StanfordCarsDataset": StanfordCarsDataset,
         "PoseGenCarsDataset": PoseGenCarsDataset,
     }
-    dataset = datasets[args.dataset]
+    dataset = datasets[dataset]
     dl_train, dl_eval, dl_test = get_dataloaders(
-        dataset, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir, 
-        args.im_size, args.batch_size, eval_split, num_workers
+        dataset, obj_data_dir, bgnd_data_dir, sil_data_dir,
+        im_size, batch_size, eval_split, num_workers
     )
 
     # Configure trainer
@@ -195,15 +218,16 @@ def train(args):
         sch_d,
         dl_train,
         dl_eval,
+        dl_test,
         nz,
         log_dir,
         ckpt_dir,
-        torch.device(args.device),
+        torch.device(device),
     )
 
     # Train model
-    trainer.train(args.max_steps, args.repeat_d, args.eval_every, args.ckpt_every)
+    trainer.train(max_steps, repeat_d, eval_every, ckpt_every)
 
 
-if __name__ == "__main__":
-    train(parse_args())
+# if __name__ == "__main__":
+#     train(parse_args())

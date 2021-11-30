@@ -1,3 +1,4 @@
+import functools
 import os
 
 from tqdm import tqdm
@@ -9,6 +10,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.utils as vutils
 from torchmetrics import IS, FID, KID
+import wandb
 
 
 def prepare_data_for_inception(x, device):
@@ -111,7 +113,7 @@ def train_step(net, opt, sch, compute_loss):
     return loss
 
 
-def evaluate(net_g, net_d, dataloader, device, train=False):
+def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
     r"""
     Evaluates model and logs metrics.
     Attributes:
@@ -178,13 +180,15 @@ def evaluate(net_g, net_d, dataloader, device, train=False):
 
         # Process metrics
         metrics = {
-            "L(G)": torch.stack(loss_gs).mean().item(),
-            "L(D)": torch.stack(loss_ds).mean().item(),
-            "D(x)": torch.stack(real_preds).mean().item(),
-            "D(G(z))": torch.stack(fake_preds).mean().item(),
-            "IS": is_.compute()[0].item(),
-            "FID": fid.compute().item(),
-            "KID": kid.compute()[0].item(),
+            f"{prefix}L(G)": torch.stack(loss_gs).mean().item(),
+            f"{prefix}L(D)": torch.stack(loss_ds).mean().item(),
+            f"{prefix}D(x)": torch.stack(real_preds).mean().item(),
+            f"{prefix}D(G(z))": torch.stack(fake_preds).mean().item(),
+            f"{prefix}IS": is_.compute()[0].item(),
+            f"{prefix}FID": fid.compute().item(),
+            f"{prefix}KID": kid.compute()[0].item(),
+            # TODO: add IoU
+            # TODO: add sim
         }
 
         # Create samples
@@ -230,6 +234,7 @@ class Trainer:
         sch_d,
         train_dataloader,
         eval_dataloader,
+        test_dataloader,
         nz,
         log_dir,
         ckpt_dir,
@@ -244,6 +249,7 @@ class Trainer:
         self.sch_d = sch_d
         self.train_dataloader = train_dataloader
         self.eval_dataloader = eval_dataloader
+        self.test_dataloader = test_dataloader
 
         # Setup training parameters
         self.device = device
@@ -365,7 +371,7 @@ class Trainer:
                 real_obj = data['obj_image'].to(self.device)
                 real_bgnd = data['bgnd_image'].to(self.device)
                 real_sil = data['sil_image'].to(self.device)
-                loss_d = self._train_step_d(real_obj, real_bgnd, real_sil)  # TODO: revert
+                loss_d = self._train_step_d(real_obj, real_bgnd, real_sil)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(real_obj, real_bgnd, real_sil)
 
@@ -374,15 +380,20 @@ class Trainer:
                 )
 
                 if self.step != 0 and self.step % eval_every == 0:
-                    self._log(
-                        *evaluate(
-                            self.net_g,
-                            self.net_d,
-                            self.eval_dataloader,
-                            self.device,
-                            train=True,
-                        )
+                    evaluate_partial = functools.partial(
+                        evaluate,
+                        net_g=self.net_g, net_d=self.net_d, device=self.device
                     )
+                    eval_res = evaluate_partial(
+                        dataloader=self.eval_dataloader,
+                        train=True,
+                        prefix="validation_"
+                    )
+                    self._log(*eval_res)
+                    eval_metrics = eval_res[0]
+                    wandb.log(eval_metrics)  # TODO: add validation prefix
+                    test_res = evaluate_partial(dataloader=self.test_dataloader, train=False, prefix="test_")
+                    wandb.log(test_res)
 
                 if self.step != 0 and self.step % ckpt_every == 0:
                     self._save_checkpoint()

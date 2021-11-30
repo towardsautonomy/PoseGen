@@ -4,7 +4,7 @@ import logging
 import wandb
 
 import config
-
+from train import train
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -40,4 +40,4 @@ class Experiment:
             name=self.name,
         ) as wb:
             logger.info(f"experiment {self.name}")
-            wb.log()
+            train(...)
