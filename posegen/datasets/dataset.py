@@ -41,7 +41,7 @@ class CarWithMask:
     def car_mask(self) -> BinaryMask:
         path = self.mask_path
         if path.exists():
-            return np.load(open(path, 'rb'))
+            return np.load(open(path, 'rb'), allow_pickle=True)
         mask = get_mask(image=self.car_image)
         if path:
             path.parent.mkdir(exist_ok=True)
