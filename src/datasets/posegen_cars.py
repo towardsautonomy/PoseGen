@@ -1,24 +1,21 @@
-# import packages
 import os
 import sys
-import copy
 import glob
 import numpy as np
-import scipy
-import scipy.io
-from dataset import Dataset
+from .dataset import Dataset
 
 # add path to sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UTILS_DIR = os.path.dirname(os.path.abspath('src/utils'))
-sys.path.append(BASE_DIR)
-sys.path.append(UTILS_DIR)
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# UTILS_DIR = os.path.dirname(os.path.abspath('src/utils'))
+# sys.path.append(BASE_DIR)
+# sys.path.append(UTILS_DIR)
+#
+# # from utils import *
+#
+# # Ignore warnings
+# import warnings
+# warnings.filterwarnings("ignore")
 
-from utils import *
-
-# Ignore warnings
-import warnings
-warnings.filterwarnings("ignore")
 
 # Dataset Class
 class PoseGenCarsDataset(Dataset):

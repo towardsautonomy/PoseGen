@@ -5,7 +5,7 @@ import argparse
 import torch
 import torch.optim as optim
 
-from src.datasets import StanfordCarsDataset, PoseGenCarsDataset
+from src.datasets import PoseGenCarsDataset, StanfordCarsDataset
 from src.utils import get_dataloaders
 from src.models import PoseGen_Discriminator, PoseGen_Generator, PoseGen
 from src.trainer import Trainer
@@ -180,7 +180,7 @@ def train(args):
         "PoseGenCarsDataset": PoseGenCarsDataset,
     }
     dataset = datasets[args.dataset]
-    train_dataloader, eval_dataloader = get_dataloaders(
+    dl_train, dl_eval, dl_test = get_dataloaders(
         dataset, args.obj_data_dir, args.bgnd_data_dir, args.sil_data_dir, 
         args.im_size, args.batch_size, eval_split, num_workers
     )
@@ -193,8 +193,8 @@ def train(args):
         opt_d,
         sch_g,
         sch_d,
-        train_dataloader,
-        eval_dataloader,
+        dl_train,
+        dl_eval,
         nz,
         log_dir,
         ckpt_dir,
