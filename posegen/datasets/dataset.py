@@ -34,6 +34,7 @@ class CarWithMask:
     def mask_path(self) -> Optional[Path]:
         if self.car_image_path:
             md5 = get_md5(self.car_image_path)
+            # TODO: add height and width to this
             return Path("/tmp") / Path(f"car_mask_{md5}.npy")
 
     @property
@@ -43,6 +44,8 @@ class CarWithMask:
         if path.exists():
             return np.load(open(path, 'rb'), allow_pickle=True)
         mask = get_mask(image=self.car_image)
+        if mask is None:
+            mask = np.zeros((self.width, self.height), dtype=bool)
         if path:
             path.parent.mkdir(exist_ok=True)
             np.save(open(path, 'wb'), mask)
@@ -80,9 +83,13 @@ class CarDataset(Dataset):
         self._np_rand_state = np.random.RandomState(self.seed)
         self._df = self._split(self.path, self.extension, self.seed)
         self._df_split = self._df[self._df.split == self.split].sort_values(by="path")
-        self._cars = [
+        self._cars = (
             CarWithMask(car_image_path=path, width=self.width, height=self.height)
             for path in self._df_split.path
+        )
+        # remove any images without a mask from the set
+        self._cars = [
+            car for car in self._cars if car.car_mask.sum() > 0
         ]
         self._data = (
             self._construct_random_poses(self._cars, self.n_pose_pairs)
