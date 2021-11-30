@@ -12,6 +12,7 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
+from .utils import get_md5
 from ..datatype import BinaryMask, NumpyNdArray, PILImage, Split
 from ..instance_segmentation import get_mask
 
@@ -30,10 +31,22 @@ class CarWithMask:
         return self.mask_random if self.mask_random is not None else self.car_mask
 
     @property
+    def mask_path(self) -> Optional[Path]:
+        if self.car_image_path:
+            md5 = get_md5(self.car_image_path)
+            return Path("/tmp") / Path(f"car_mask_{md5}.npy")
+
+    @property
     @functools.lru_cache()
     def car_mask(self) -> BinaryMask:
-        # TODO: cache this on disk if it becomes a bottleneck (probably for Stanford cars)
-        return get_mask(image=self.car_image)
+        path = self.mask_path
+        if path.exists():
+            return np.load(open(path, 'rb'))
+        mask = get_mask(image=self.car_image)
+        if path:
+            path.parent.mkdir(exist_ok=True)
+            np.save(open(path, 'wb'), mask)
+        return mask
 
     @staticmethod
     def _frame_to_image(frame: NumpyNdArray) -> PILImage:
@@ -114,16 +127,12 @@ class CarDataset(Dataset):
     def _get_mmh3(s: str, seed: int) -> str:
         return mmh3.hash(s, seed=seed)
 
-    @staticmethod
-    def _get_md5(path: Path) -> str:
-        return hashlib.md5(open(path, 'rb').read()).hexdigest()
-
     def _split(self, path_base: str, ext: str, seed: int) -> pd.DataFrame:
         # this could be done offline and stored so we don't have to do it on-the-fly
         # in general this is not very expensive though
         # the splitting is tied to the MD5 of the file and is invariant to the location on disk
         df = pd.DataFrame(
-            {'path': path, 'md5': self._get_md5(path)}
+            {'path': path, 'md5': get_md5(path)}
             for path in Path(path_base).rglob(f'*.{ext}')
         )
         # TODO: for stanford cars this should be at category level, so if it works we can claim generalization
