@@ -11,6 +11,4 @@
 # from stanford_cars import StanfordCarsDataset
 # from posegen_cars import PoseGenCarsDataset
 
-
-from .posegen_cars import PoseGenCarsDataset
-from .stanford_cars import StanfordCarsDataset
+from .dataset import CarDataset

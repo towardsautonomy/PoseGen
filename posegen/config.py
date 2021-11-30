@@ -2,7 +2,7 @@ wandb = dict(
     project="posegen",
 )
 
-device = "cuda:0"
+device = "cuda"
 
 # transforms
 # TODO: where did these come from?

@@ -7,7 +7,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from .. import config
+from . import config
 from .datatype import BinaryMask, Frame
 
 
