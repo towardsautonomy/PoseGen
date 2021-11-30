@@ -2,22 +2,26 @@ import functools
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple
 
 import mmh3
 import numpy as np
 import pandas as pd
 from PIL import Image
+import torch
 from torch.utils.data import Dataset
+import torchvision.transforms as transforms
 
 from ..datatype import BinaryMask, NumpyNdArray, Split
+from ..instance_segmentation import get_mask
 
 
 @dataclass(frozen=True)
 class CarWithMask:
-    car_image_path: Path
     width: int
     height: int
+    car_image_path: Path = None
+    car_image_frame: NumpyNdArray = None
     mask_random: Optional[BinaryMask] = None
     category_idx: Optional[int] = None
 
@@ -29,56 +33,69 @@ class CarWithMask:
     @functools.lru_cache()
     def car_mask(self) -> BinaryMask:
         # TODO: cache this on disk if it becomes a bottleneck (probably for Stanford cars)
-        # TODO: run instance segmentation
-        raise NotImplementedError
+        return get_mask(image=self.car_image)
+
+    @staticmethod
+    def _frame_to_image(frame: NumpyNdArray) -> Image:
+        return Image.fromarray(frame.astype("uint8"), "RGB")
 
     @property
-    def car_image(self) -> NumpyNdArray:
+    def car_image(self) -> Image:
+        if self.car_image_frame:
+            return self._frame_to_image(self.car_image_frame)
         img = Image.open(self.car_image_path)
         return img.resize((self.width, self.height))
 
 
+@dataclass(frozen=False)
 class CarDataset(Dataset):
-    def __init__(
-        self,
-        path: str,
-        random_pose: bool,
-        n_pose_pairs: int,
-        split: Split,
-        seed: int,
-        extension: str,
-        width: int,
-        height: int,
-    ):
-        if not random_pose and n_pose_pairs > 1:
+    path: str
+    random_pose: bool
+    n_pose_pairs: int
+    split: Split
+    seed: int
+    extension: str
+    width: int
+    height: int
+    transforms_mean: Tuple[float, ...]
+    transforms_std: Tuple[float, ...]
+
+    def __post_init__(self):
+        if not self.random_pose and self.n_pose_pairs > 1:
             raise ValueError("each image has a unique pose")
 
-        self.path = path
-        self.seed = seed
-        self.n_pose_pairs = n_pose_pairs
-        self.extension = extension
-        self.width = width
-        self.height = height
-        self.split = split
         self._np_rand_state = np.random.RandomState(self.seed)
         self._df = self._split(self.path, self.extension, self.seed)
-        self._df_split = self._df[self._df.split == split].sort_values(by="path")
+        self._df_split = self._df[self._df.split == self.split].sort_values(by="path")
         self._cars = [
             CarWithMask(car_image_path=path, width=self.width, height=self.height)
             for path in self._df_split.path
         ]
         self._data = (
             self._construct_random_poses(self._cars, self.n_pose_pairs)
-            if random_pose
+            if self.random_pose
             else self._cars
         )
 
     def __len__(self):
         return len(self._data)
 
-    def __getitem__(self, idx: int) -> Tuple[NumpyNdArray, BinaryMask]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         car = self._data[idx]
-        return car.car_image, car.mask
+        return self.transform_fn(car.car_image), self.transform_fn(self._mask_to_rgb(car.mask))
+
+    @staticmethod
+    def _mask_to_rgb(mask: BinaryMask) -> Image:
+        return Image.fromarray(mask).convert("RGB")
+
+    @property
+    def transform_fn(self) -> Callable[[Image], torch.Tensor]:
+        return transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(self.transforms_mean, self.transforms_std),
+            ]
+        )
 
     def _construct_random_poses(self, cars: Sequence[CarWithMask], n_pose_pairs: int) -> Sequence[CarWithMask]:
         # for each car randomly pair it with `n_pose_pairs` pose masks selected from the same set.

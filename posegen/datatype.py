@@ -2,7 +2,7 @@ from enum import Enum
 
 import numpy as np
 
-BinaryMask = NumpyNdArray = np.ndarray
+BinaryMask = Frame = NumpyNdArray = np.ndarray
 
 
 class Split(Enum):

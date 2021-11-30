@@ -6,7 +6,7 @@
 * Create and activate conda environment.
 
 ```shell
-conda env create -f environment/conda_env.yml
+conda env create -f conda_env.yml
 conda activate posegen
 ```
 
