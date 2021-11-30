@@ -2,14 +2,13 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence
 
 from PIL import Image
-from PIL.Image import Image as PILImage
 import numpy as np
 import torch
 import torchvision
 import torchvision.transforms as transforms
 
 from . import config
-from .datatype import BinaryMask
+from .datatype import BinaryMask, PILImage
 
 
 @dataclass

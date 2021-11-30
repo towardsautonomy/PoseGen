@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
-from ..datatype import BinaryMask, NumpyNdArray, Split
+from ..datatype import BinaryMask, NumpyNdArray, PILImage, Split
 from ..instance_segmentation import get_mask
 
 
@@ -36,11 +36,11 @@ class CarWithMask:
         return get_mask(image=self.car_image)
 
     @staticmethod
-    def _frame_to_image(frame: NumpyNdArray) -> Image:
+    def _frame_to_image(frame: NumpyNdArray) -> PILImage:
         return Image.fromarray(frame.astype("uint8"), "RGB")
 
     @property
-    def car_image(self) -> Image:
+    def car_image(self) -> PILImage:
         if self.car_image_frame:
             return self._frame_to_image(self.car_image_frame)
         img = Image.open(self.car_image_path)
@@ -85,11 +85,11 @@ class CarDataset(Dataset):
         return self.transform_fn(car.car_image), self.transform_fn(self._mask_to_rgb(car.mask))
 
     @staticmethod
-    def _mask_to_rgb(mask: BinaryMask) -> Image:
+    def _mask_to_rgb(mask: BinaryMask) -> PILImage:
         return Image.fromarray(mask).convert("RGB")
 
     @property
-    def transform_fn(self) -> Callable[[Image], torch.Tensor]:
+    def transform_fn(self) -> Callable[[PILImage], torch.Tensor]:
         return transforms.Compose(
             [
                 transforms.ToTensor(),
