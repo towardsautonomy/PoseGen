@@ -1,0 +1,3 @@
+wandb = dict(
+    project="posegen",
+)

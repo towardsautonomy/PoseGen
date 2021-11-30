@@ -8,17 +8,19 @@ import scipy
 import scipy.io
 from dataset import Dataset
 
+from utils import *
+
+# Ignore warnings
+import warnings
+warnings.filterwarnings("ignore")
+
+
 # add path to sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UTILS_DIR = os.path.dirname(os.path.abspath('src/utils'))
 sys.path.append(BASE_DIR)
 sys.path.append(UTILS_DIR)
 
-from utils import *
-
-# Ignore warnings
-import warnings
-warnings.filterwarnings("ignore")
 
 # Dataset Class
 class StanfordCarsDataset(Dataset):
@@ -145,18 +147,19 @@ class StanfordCarsDataset(Dataset):
     def object_id_description_dict(self):
         return self.id_description_dict
 
+
 # main function
 if __name__ == '__main__':
     import cv2
 
-    ## dataset object
+    # dataset object
     dataset = StanfordCarsDataset( obj_dataroot='/floppy/datasets/Stanford', 
                                    bgnd_dataroot='/floppy/datasets/PoseGen/background',
                                    sil_dataroot='/floppy/datasets/PoseGen/rendered_silhouette',
                                    resize_dim=(256,256),
                                    verbose=True)
 
-    ## get object type ids
+    # get object type ids
     object_type_ids = dataset.get_object_type_ids()
     # display samples
     for i in range(dataset.__len__(1)):
@@ -168,4 +171,3 @@ if __name__ == '__main__':
         cv2.imshow(sample['object_description'], cv2.hconcat([obj_img_bgr, bgnd_img_bgr, sil_img_bgr]))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-    

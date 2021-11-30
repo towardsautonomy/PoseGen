@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from module import *
 
+
 class Generator(nn.Module):
     r"""
     ResNet backbone generator for SNGAN.
@@ -85,6 +86,7 @@ class Discriminator(nn.Module):
         y = self.l8(h)
         return y
 
+
 class Encoder(nn.Module):
     r"""
     ResNet backbone encoder architecture.
@@ -120,6 +122,7 @@ class Encoder(nn.Module):
         h_final = torch.sum(h9, dim=(2, 3))
         y = self.l8(h_final)
         return y, [h1, h2, h3, h4, h5, h6, h7, h8, h9]
+
 
 class Decoder(nn.Module):
     r"""
@@ -171,7 +174,9 @@ class Decoder(nn.Module):
         h_final = self.c8(h10)
         y = torch.tanh(h_final)
         
-        return y        
+        return y
+
+
 class PoseGen(nn.Module):
     def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, skip_connections: bool = True, n_encoders: int = 3):
         super().__init__()
