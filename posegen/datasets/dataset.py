@@ -2,6 +2,7 @@ import functools
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Sequence, Tuple
+from torch.utils.data import DataLoader
 
 import mmh3
 import numpy as np
@@ -12,7 +13,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
 from .utils import get_md5, DeNormalize
-from ..datatypes import BinaryMask, PILImage, Split
+from ..datatypes import BinaryMask, CarTensorData, PILImage, Split
 from ..instance_segmentation import get_mask
 
 
@@ -99,12 +100,21 @@ class CarDataset(Dataset):
     def __len__(self):
         return len(self._data)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> CarTensorData:
         item = self._data[idx]
         car = self.transform_fn_cars(item.car_image)
         mask_rgb = self._mask_to_rgb(item.mask)
         pose = self.transform_fn_poses(mask_rgb)
-        return car, pose
+        return CarTensorData(car, pose)
+
+    def get_dataloader(
+        self, batch_size: int, shuffle: bool, num_workers: int
+    ) -> DataLoader:
+        if shuffle and self.split != Split.train:
+            raise ValueError("don't shuffle datasets other than train")
+        return DataLoader(
+            self, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+        )
 
     @staticmethod
     def _mask_to_rgb(mask: BinaryMask) -> PILImage:

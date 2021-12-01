@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from module import *
 
-from ..datatypes import CarData
+from ..datatypes import CarTensorData
 
 
 class Generator(nn.Module):
@@ -222,7 +222,7 @@ class PoseGen(nn.Module):
             n_encoders=n_encoders,
         )
 
-    def forward(self, data: CarData):
+    def forward(self, data: CarTensorData):
         z_appear, appear_hidden_features = self.obj_appear_enc(data.car)
         z_bgnd, bgnd_hidden_features = self.background_enc(data.background)
         z_pose, pose_hidden_features = self.pose_enc(data.pose)

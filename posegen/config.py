@@ -6,15 +6,28 @@ wandb = dict(
 device = "cuda"
 
 # datasets
-path_dataset_pose_gen = "TODO"
+tesla_path_dataset = "/data/PoseGen_resized/cars/"
+tesla_extension = "JPEG"
 
+seed_data = 0
+n_pose_pairs = 1
+
+# images
+width, height = 256, 256
+
+# training
+seed = 0
+
+# baselines
+baselines_tesla_batch_size = 32
+baselines_tesla_num_workers = 1
 
 # transforms
 # TODO: where did these come from?
-transforms_mean_cars = (0.5, 0.5, 0.5)
-transforms_std_cars = (0.24, 0.24, 0.24)
-transforms_mean_poses = (0.25, 0.25, 0.25)
-transforms_std_poses = (0.43, 0.43, 0.43)
+transforms_mean_cars_tesla = (0.5, 0.5, 0.5)
+transforms_std_cars_tesla = (0.24, 0.24, 0.24)
+transforms_mean_poses_tesla = (0.25, 0.25, 0.25)
+transforms_std_poses_tesla = (0.43, 0.43, 0.43)
 
 
 # instance segmentation

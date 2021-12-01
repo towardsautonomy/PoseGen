@@ -3,12 +3,12 @@ from typing import List, Optional, Sequence
 
 from PIL import Image
 import numpy as np
-import torch
 import torchvision
 import torchvision.transforms as transforms
 
 from . import config
 from .datatypes import BinaryMask, PILImage
+from .utils import get_device
 
 
 @dataclass
@@ -26,14 +26,7 @@ class InstanceSegmentation:
         self.model = self._get_instance_segmentation_model()
         self.coco_categories = coco_categories
         self.threshold = threshold
-
-    @property
-    def gpu(self) -> bool:
-        return torch.cuda.is_available()
-
-    @property
-    def device(self) -> torch.device:
-        return torch.device("cuda" if self.gpu else "cpu")
+        self.device = get_device()
 
     def _get_instance_segmentation_model(self):
         model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)

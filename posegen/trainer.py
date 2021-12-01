@@ -6,25 +6,11 @@ import torch
 import torch.nn.functional as F
 import torch.utils.tensorboard as tbx
 import torchvision.utils as vutils
-from torchmetrics import IS, KID
 import wandb
 
-from .datatypes import CarData
+from .datatypes import CarTensorData
 from .datasets import CarDataset
-from .metrics import FIDBetter, IoU
-
-
-def prepare_data_for_inception(x, device):
-    r"""
-    Preprocess data to be feed into the Inception model.
-    """
-
-    x = F.interpolate(x, 299, mode="bicubic", align_corners=False)
-    minv, maxv = float(x.min()), float(x.max())
-    x.clamp_(min=minv, max=maxv).add_(-minv).div_(maxv - minv + 1e-5)
-    x.mul_(255).add_(0.5).clamp_(0, 255)
-
-    return x.to(device).to(torch.uint8)
+from .metrics import MetricCalculator
 
 
 def prepare_data_for_gan(x, nz, device):
@@ -65,7 +51,7 @@ def hinge_loss_d(real_preds, fake_preds):
 def compute_loss_g(
     net_g,
     net_d,
-    real: CarData,
+    real: CarTensorData,
     loss_func_g,
     lambda_g=1.0,
     lambda_mse=2.5,
@@ -95,7 +81,7 @@ def compute_loss_g(
     return loss_g, fakes, fake_preds
 
 
-def compute_loss_d(net_g, net_d, real: CarData, loss_func_d):
+def compute_loss_d(net_g, net_d, real: CarTensorData, loss_func_d):
     r"""
     General implementation to compute discriminator loss.
     """
@@ -142,24 +128,13 @@ def evaluate(
     with torch.no_grad():
 
         # Initialize metrics
-        is_, fid, kid, loss_gs, loss_ds, real_preds, fake_preds = (
-            IS().to(device),
-            FIDBetter().to(device),
-            KID(subset_size=32).to(device),
-            [],
-            [],
-            [],
-            [],
-        )
-        fake_images_list = []
-        real_poses_list = []
+        loss_gs, loss_ds, real_preds, fake_preds = [], [], [], []
+        metric_calculator = MetricCalculator(device, ds.transform_reverse_fn_cars)
 
-        for car, pose in tqdm(dataloader, desc="Evaluating Model"):
+        for real in tqdm(dataloader, desc="Evaluating Model"):
             # Compute losses and save intermediate outputs
             # reals, z = prepare_data_for_gan(data['image'], nz, device)
-            real = CarData(car=car.to(device), pose=pose.to(device))
-            real_pose = pose.to(device)
-            real_poses_list.append(real.pose)
+            real = real.to(device)
 
             loss_d, fakes, real_pred, fake_pred = compute_loss_d(
                 net_g,
@@ -167,7 +142,7 @@ def evaluate(
                 real,
                 hinge_loss_d,
             )
-            fake_images_list.append(fakes)
+            metric_calculator.update(real, fakes)
             loss_g, _, _ = compute_loss_g(net_g, net_d, real, hinge_loss_g)
 
             # Update metrics
@@ -175,27 +150,19 @@ def evaluate(
             loss_ds.append(loss_d)
             real_preds.append(compute_prob(real_pred))
             fake_preds.append(compute_prob(fake_pred))
-            reals_inception = prepare_data_for_inception(real.car, device)
-            fakes_inception = prepare_data_for_inception(fakes, device)
-            is_.update(fakes_inception)
-            fid.update(reals_inception, real=True)
-            fid.update(fakes_inception, real=False)
-            kid.update(reals_inception, real=True)
-            kid.update(fakes_inception, real=False)
 
         # Process metrics
+        metrics = metric_calculator.compute()
         metrics = {
             f"{prefix}L(G)": torch.stack(loss_gs).mean().item(),
             f"{prefix}L(D)": torch.stack(loss_ds).mean().item(),
             f"{prefix}D(x)": torch.stack(real_preds).mean().item(),
             f"{prefix}D(G(z))": torch.stack(fake_preds).mean().item(),
-            f"{prefix}IS": is_.compute()[0].item(),
-            f"{prefix}FID": fid.compute().item(),
-            f"{prefix}KID": kid.compute()[0].item(),
-            f"{prefix}IoUMean": IoU(
-                real_poses_list, fake_images_list, ds.transform_reverse_fn_cars
-            ).compute(),
-            f"{prefix}InceptionSimMean": fid.sim(),
+            f"{prefix}IS": metrics.inception_score,
+            f"{prefix}FID": metrics.fid,
+            f"{prefix}KID": metrics.kid,
+            f"{prefix}IoU": metrics.iou,
+            f"{prefix}InceptionSim": metrics.inception_sim,
         }
 
         # Create samples
@@ -206,7 +173,7 @@ def evaluate(
             )
             # bgnd_samples = real_bgnd.cpu()
             # bgnd_samples = vutils.make_grid(bgnd_samples, nrow=8, padding=4, normalize=True)
-            pose_samples = real_pose.cpu()
+            pose_samples = real.pose.cpu()
             pose_samples = vutils.make_grid(
                 pose_samples, nrow=8, padding=4, normalize=True
             )
@@ -331,7 +298,7 @@ class Trainer:
         self.logger.add_image("fake", fake_samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, real: CarData):
+    def _train_step_g(self, real: CarTensorData):
         r"""
         Performs a generator training step.
         """
@@ -348,7 +315,7 @@ class Trainer:
             )[0],
         )
 
-    def _train_step_d(self, real: CarData):
+    def _train_step_d(self, real: CarTensorData):
         r"""
         Performs a discriminator training step.
         """
@@ -379,10 +346,10 @@ class Trainer:
 
         while True:
             pbar = tqdm(self.train_dataloader)
-            for car, pose in pbar:
+            for real in pbar:
                 # Training step
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
-                real = CarData(car=car.to(self.device), pose=pose.to(self.device))
+                real = real.to(self.device)
                 loss_d = self._train_step_d(real)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(real)
