@@ -73,8 +73,10 @@ class CarDataset(Dataset):
     extension: str
     width: int
     height: int
-    transforms_mean: Tuple[float, ...]
-    transforms_std: Tuple[float, ...]
+    transforms_mean_cars: Tuple[float, ...]
+    transforms_std_cars: Tuple[float, ...]
+    transforms_mean_poses: Tuple[float, ...]
+    transforms_std_poses: Tuple[float, ...]
 
     def __post_init__(self):
         if not self.random_pose and self.n_pose_pairs > 1:

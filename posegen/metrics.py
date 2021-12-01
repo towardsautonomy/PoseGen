@@ -16,6 +16,7 @@ class IoU:
     fake_images_list: List[torch.Tensor]
 
     def __post_init__(self):
+        # TODO: this may cause OOM => do batches at a time
         self.real_poses = dim_zero_cat(self.real_poses_list)
         self.fake_images = dim_zero_cat(self.fake_images_list)
         self.n = len(self.real_poses)

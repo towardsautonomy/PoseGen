@@ -11,8 +11,10 @@ path_dataset_pose_gen = "TODO"
 
 # transforms
 # TODO: where did these come from?
-transforms_mean = (0.5, 0.5, 0.5)
-transforms_std = (0.5, 0.5, 0.5)
+transforms_mean_cars = (0.5, 0.5, 0.5)
+transforms_std_cars = (0.24, 0.24, 0.24)
+transforms_mean_poses = (0.25, 0.25, 0.25)
+transforms_std_poses = (0.43, 0.43, 0.43)
 
 
 # instance segmentation
