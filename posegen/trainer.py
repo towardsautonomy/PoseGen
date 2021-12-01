@@ -9,7 +9,7 @@ import torchvision.utils as vutils
 from torchmetrics import IS, KID
 import wandb
 
-from .datatypes import Parts
+from .datatypes import CarData
 from .metrics import FIDBetter, IoU
 
 
@@ -61,7 +61,7 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, real: Parts, loss_func_g, lambda_g=1.0, lambda_mse=2.5, pretrain=False):
+def compute_loss_g(net_g, net_d, real: CarData, loss_func_g, lambda_g=1.0, lambda_mse=2.5, pretrain=False):
     r"""
     General implementation to compute generator loss.
     """
@@ -85,7 +85,7 @@ def compute_loss_g(net_g, net_d, real: Parts, loss_func_g, lambda_g=1.0, lambda_
     return loss_g, fakes, fake_preds
 
 
-def compute_loss_d(net_g, net_d, real: Parts, loss_func_d):
+def compute_loss_d(net_g, net_d, real: CarData, loss_func_d):
     r"""
     General implementation to compute discriminator loss.
     """
@@ -145,7 +145,7 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
         for car, pose in tqdm(dataloader, desc="Evaluating Model"):
             # Compute losses and save intermediate outputs
             # reals, z = prepare_data_for_gan(data['image'], nz, device)
-            real = Parts(car=car.to(device), pose=pose.to(device))
+            real = CarData(car=car.to(device), pose=pose.to(device))
             real_pose = pose.to(device)
             real_poses_list.append(real.pose)
 
@@ -310,7 +310,7 @@ class Trainer:
         self.logger.add_image("fake", fake_samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, real: Parts):
+    def _train_step_g(self, real: CarData):
         r"""
         Performs a generator training step.
         """
@@ -327,7 +327,7 @@ class Trainer:
             )[0],
         )
 
-    def _train_step_d(self, real: Parts):
+    def _train_step_d(self, real: CarData):
         r"""
         Performs a discriminator training step.
         """
@@ -361,7 +361,7 @@ class Trainer:
             for car, pose in pbar:
                 # Training step
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
-                real = Parts(car=car.to(self.device), pose=pose.to(self.device))
+                real = CarData(car=car.to(self.device), pose=pose.to(self.device))
                 loss_d = self._train_step_d(real)
                 if self.step % repeat_d == 0:
                     loss_g = self._train_step_g(real)

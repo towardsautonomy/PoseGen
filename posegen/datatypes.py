@@ -17,14 +17,14 @@ class Split(Enum):
 
 
 class Architecture(Enum):
-    un_conditional = "un_conditional"
+    unconditional = "unconditional"
     pose_only = "pose_only"
     pose_and_car = "pose_and_car"
     pose_car_background = "pose_car_background"
 
 
 @dataclass(frozen=False)
-class Parts:
+class CarData:
     car: torch.Tensor
     pose: torch.Tensor
     background: Optional[torch.Tensor] = None

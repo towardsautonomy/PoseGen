@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from module import *
 
-from ..datatypes import Parts
+from ..datatypes import CarData
 
 
 class Generator(nn.Module):
@@ -190,10 +190,10 @@ class PoseGen(nn.Module):
         self.pose_enc = Encoder(ndf, nz)
         self.dec = Decoder(nz, ngf, bottom_width, skip_connections=skip_connections, n_encoders=n_encoders)
 
-    def forward(self, x: Parts):
-        z_appear, appear_hidden_features = self.obj_appear_enc(x.car)
-        z_bgnd, bgnd_hidden_features = self.background_enc(x.background)
-        z_pose, pose_hidden_features = self.pose_enc(x.pose)
+    def forward(self, data: CarData):
+        z_appear, appear_hidden_features = self.obj_appear_enc(data.car)
+        z_bgnd, bgnd_hidden_features = self.background_enc(data.background)
+        z_pose, pose_hidden_features = self.pose_enc(data.pose)
         # concatenate latent vectors
         z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
         # hidden features
