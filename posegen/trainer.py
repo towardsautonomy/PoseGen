@@ -61,7 +61,15 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, real: CarData, loss_func_g, lambda_g=1.0, lambda_mse=2.5, pretrain=False):
+def compute_loss_g(
+    net_g,
+    net_d,
+    real: CarData,
+    loss_func_g,
+    lambda_g=1.0,
+    lambda_mse=2.5,
+    pretrain=False,
+):
     r"""
     General implementation to compute generator loss.
     """
@@ -71,7 +79,7 @@ def compute_loss_g(net_g, net_d, real: CarData, loss_func_g, lambda_g=1.0, lambd
 
     if pretrain:
         # reconstruction loss
-        loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(real.car, fakes)
+        loss_rec = lambda_mse * torch.nn.MSELoss(reduction="mean")(real.car, fakes)
         loss_g += loss_rec
 
     else:
@@ -79,8 +87,9 @@ def compute_loss_g(net_g, net_d, real: CarData, loss_func_g, lambda_g=1.0, lambd
         # reconstruction loss
         masked_bgnd = real_bgnd * inverted_sil
         masked_gen = fakes * inverted_sil
-        loss_rec = lambda_mse * \
-                    torch.mean(inverted_sil * torch.nn.MSELoss(reduction='none')(masked_bgnd, masked_gen))
+        loss_rec = lambda_mse * torch.mean(
+            inverted_sil * torch.nn.MSELoss(reduction="none")(masked_bgnd, masked_gen)
+        )
         loss_g += loss_rec
     return loss_g, fakes, fake_preds
 
@@ -156,12 +165,7 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
                 hinge_loss_d,
             )
             fake_images_list.append(fakes)
-            loss_g, _, _ = compute_loss_g(
-                net_g,
-                net_d,
-                real,
-                hinge_loss_g
-            )
+            loss_g, _, _ = compute_loss_g(net_g, net_d, real, hinge_loss_g)
 
             # Update metrics
             loss_gs.append(loss_g)
@@ -192,16 +196,26 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
         # Create samples
         if train:
             true_samples = real.car.cpu()
-            true_samples = vutils.make_grid(true_samples, nrow=8, padding=4, normalize=True)
+            true_samples = vutils.make_grid(
+                true_samples, nrow=8, padding=4, normalize=True
+            )
             # bgnd_samples = real_bgnd.cpu()
             # bgnd_samples = vutils.make_grid(bgnd_samples, nrow=8, padding=4, normalize=True)
             pose_samples = real_pose.cpu()
-            pose_samples = vutils.make_grid(pose_samples, nrow=8, padding=4, normalize=True)
+            pose_samples = vutils.make_grid(
+                pose_samples, nrow=8, padding=4, normalize=True
+            )
             fake_samples = net_g(real)
             fake_samples = F.interpolate(fake_samples, 256).cpu()
-            fake_samples = vutils.make_grid(fake_samples, nrow=8, padding=4, normalize=True)
+            fake_samples = vutils.make_grid(
+                fake_samples, nrow=8, padding=4, normalize=True
+            )
 
-    return metrics if not train else (metrics, true_samples, bgnd_samples, pose_samples, fake_samples)
+    return (
+        metrics
+        if not train
+        else (metrics, true_samples, bgnd_samples, pose_samples, fake_samples)
+    )
 
 
 class Trainer:
@@ -372,18 +386,19 @@ class Trainer:
 
                 if self.step != 0 and self.step % eval_every == 0:
                     evaluate_partial = functools.partial(
-                        evaluate,
-                        net_g=self.net_g, net_d=self.net_d, device=self.device
+                        evaluate, net_g=self.net_g, net_d=self.net_d, device=self.device
                     )
                     eval_res = evaluate_partial(
                         dataloader=self.eval_dataloader,
                         train=True,
-                        prefix="validation_"
+                        prefix="validation_",
                     )
                     self._log(*eval_res)
                     eval_metrics = eval_res[0]
                     wandb.log(eval_metrics)
-                    test_res = evaluate_partial(dataloader=self.test_dataloader, train=False, prefix="test_")
+                    test_res = evaluate_partial(
+                        dataloader=self.test_dataloader, train=False, prefix="test_"
+                    )
                     wandb.log(test_res)
 
                 if self.step != 0 and self.step % ckpt_every == 0:

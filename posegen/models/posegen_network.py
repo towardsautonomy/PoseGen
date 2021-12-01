@@ -135,12 +135,14 @@ class Decoder(nn.Module):
         bottom_width (int): Starting width for upsampling generator output to an image.
     """
 
-    def __init__(self, nz=128, ngf=512, bottom_width=4, skip_connections=False, n_encoders=2):
+    def __init__(
+        self, nz=128, ngf=512, bottom_width=4, skip_connections=False, n_encoders=2
+    ):
         super().__init__()
 
         self.skip_connections = skip_connections
 
-        self.l1 = nn.Linear(nz*n_encoders, (bottom_width ** 2) * ngf)
+        self.l1 = nn.Linear(nz * n_encoders, (bottom_width ** 2) * ngf)
         self.unfatten = nn.Unflatten(1, (ngf, bottom_width, bottom_width))
         self.block2 = GBlock(ngf, ngf >> 1, upsample=True)
         self.block3 = GBlock(ngf >> 1, ngf >> 2, upsample=True)
@@ -156,31 +158,55 @@ class Decoder(nn.Module):
         nn.init.xavier_uniform_(self.c8.weight.data, 1.0)
 
     def forward(self, x, enc_hidden_layers):
-        h1_enc, h2_enc, h3_enc, h4_enc, h5_enc, h6_enc, h7_enc, h8_enc, h9_enc = enc_hidden_layers
+        (
+            h1_enc,
+            h2_enc,
+            h3_enc,
+            h4_enc,
+            h5_enc,
+            h6_enc,
+            h7_enc,
+            h8_enc,
+            h9_enc,
+        ) = enc_hidden_layers
         h1 = self.l1(x)
         h2 = self.unfatten(h1)
-        if self.skip_connections: h2 += h7_enc
+        if self.skip_connections:
+            h2 += h7_enc
         h3 = self.block2(h2)
-        if self.skip_connections: h3 += h6_enc
+        if self.skip_connections:
+            h3 += h6_enc
         h4 = self.block3(h3)
-        if self.skip_connections: h4 += h5_enc
+        if self.skip_connections:
+            h4 += h5_enc
         h5 = self.block4(h4)
-        if self.skip_connections: h5 += h4_enc
+        if self.skip_connections:
+            h5 += h4_enc
         h6 = self.block5(h5)
-        if self.skip_connections: h6 += h3_enc
+        if self.skip_connections:
+            h6 += h3_enc
         h7 = self.block6(h6)
-        if self.skip_connections: h7 += h2_enc
+        if self.skip_connections:
+            h7 += h2_enc
         h8 = self.block7(h7)
         h9 = self.b8(h8)
         h10 = self.activation(h9)
         h_final = self.c8(h10)
         y = torch.tanh(h_final)
-        
+
         return y
 
 
 class PoseGen(nn.Module):
-    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, skip_connections: bool = True, n_encoders: int = 3):
+    def __init__(
+        self,
+        ndf=1024,
+        ngf: int = 512,
+        nz: int = 128,
+        bottom_width: int = 4,
+        skip_connections: bool = True,
+        n_encoders: int = 3,
+    ):
         super().__init__()
         # object appearance encoder
         self.obj_appear_enc = Encoder(ndf, nz)
@@ -188,7 +214,13 @@ class PoseGen(nn.Module):
         self.background_enc = Encoder(ndf, nz)
         # pose encoder
         self.pose_enc = Encoder(ndf, nz)
-        self.dec = Decoder(nz, ngf, bottom_width, skip_connections=skip_connections, n_encoders=n_encoders)
+        self.dec = Decoder(
+            nz,
+            ngf,
+            bottom_width,
+            skip_connections=skip_connections,
+            n_encoders=n_encoders,
+        )
 
     def forward(self, data: CarData):
         z_appear, appear_hidden_features = self.obj_appear_enc(data.car)
@@ -197,8 +229,12 @@ class PoseGen(nn.Module):
         # concatenate latent vectors
         z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
         # hidden features
-        hidden_features = [a + b + c for a, b, c in \
-                            zip(appear_hidden_features, bgnd_hidden_features, pose_hidden_features)]
+        hidden_features = [
+            a + b + c
+            for a, b, c in zip(
+                appear_hidden_features, bgnd_hidden_features, pose_hidden_features
+            )
+        ]
         # reconstruct
         out = self.dec(z, bgnd_hidden_features)
         return out

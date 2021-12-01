@@ -49,11 +49,7 @@ class InstanceSegmentation:
         Takes either a path to an image on disk or a PIL Image object.
         Passes it through the model and returns object masks with score >= threshold.
         """
-        img = np.array(
-            Image.open(path)
-            if path is not None
-            else image
-        )
+        img = np.array(Image.open(path) if path is not None else image)
         img = transforms.ToTensor()(img).unsqueeze(dim=0)
         predictions = self.model(img.to(self.device))[0]
         labels = predictions["labels"]
@@ -62,7 +58,12 @@ class InstanceSegmentation:
         return [
             ObjectMask(
                 object_name=self.coco_categories[label.item()],
-                mask=(mask >= self.threshold).squeeze().cpu().detach().numpy().astype(bool),
+                mask=(mask >= self.threshold)
+                .squeeze()
+                .cpu()
+                .detach()
+                .numpy()
+                .astype(bool),
             )
             for label, score, mask in zip(labels, scores, masks)
             if score.item() >= self.threshold

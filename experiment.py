@@ -15,15 +15,12 @@ class Experiment:
     dataset: str
     architecture: str
     lambda_: float
-    wandb_project_name = config.wandb['project_name']
-    wandb_entity = config.wandb['entity']
+    wandb_project_name = config.wandb["project_name"]
+    wandb_entity = config.wandb["entity"]
 
     @property
     def name(self) -> str:
-        return "-".join(
-            f"{k}={v}"
-            for k, v in self.config.items()
-        )
+        return "-".join(f"{k}={v}" for k, v in self.config.items())
 
     @property
     def config(self) -> dict:

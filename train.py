@@ -4,7 +4,6 @@ from typing import Tuple
 
 import torch
 import torch.optim as optim
-import wandb
 
 from posegen.datasets import CarDataset
 from posegen.models import PoseGen_Discriminator, PoseGen
@@ -21,8 +20,8 @@ def parse_args():
     parser.add_argument(
         "--dataset",
         type=str,
-        default='StanfordCarsDataset',
-        choices=['StanfordCarsDataset', 'PoseGenCarsDataset'],
+        default="StanfordCarsDataset",
+        choices=["StanfordCarsDataset", "PoseGenCarsDataset"],
         help="Dataset to use for training the model.",
     )
     parser.add_argument(
