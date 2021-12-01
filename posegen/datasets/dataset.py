@@ -105,7 +105,8 @@ class CarDataset(Dataset):
         car = self.transform_fn_cars(item.car_image)
         mask_rgb = self._mask_to_rgb(item.mask)
         pose = self.transform_fn_poses(mask_rgb)
-        return CarTensorData(car, pose)
+        # return CarTensorData(car, pose)
+        return car, pose
 
     def get_dataloader(
         self, batch_size: int, shuffle: bool, num_workers: int
