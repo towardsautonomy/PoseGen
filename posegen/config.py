@@ -1,8 +1,13 @@
 wandb = dict(
-    project="posegen",
+    project="cs236",
+    entity="posegen",
 )
 
 device = "cuda"
+
+# datasets
+path_dataset_pose_gen = "TODO"
+
 
 # transforms
 # TODO: where did these come from?

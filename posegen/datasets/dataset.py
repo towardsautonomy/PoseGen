@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
 from .utils import get_md5
-from ..datatype import BinaryMask, NumpyNdArray, PILImage, Split
+from ..datatypes import BinaryMask, NumpyNdArray, PILImage, Split
 from ..instance_segmentation import get_mask
 
 

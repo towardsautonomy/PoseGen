@@ -4,7 +4,7 @@ import glob
 import numpy as np
 from .dataset import CarDataset
 
-from ..datatype import Split
+from ..datatypes import Split
 
 # add path to sys
 # BASE_DIR = os.path.dirname(os.path.abspath(__file__))

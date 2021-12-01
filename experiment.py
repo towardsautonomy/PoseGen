@@ -3,7 +3,7 @@ import logging
 
 import wandb
 
-import config
+from posegen import config
 from train import train
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -16,6 +16,7 @@ class Experiment:
     architecture: str
     lambda_: float
     wandb_project_name = config.wandb['project_name']
+    wandb_entity = config.wandb['entity']
 
     @property
     def name(self) -> str:
@@ -38,6 +39,8 @@ class Experiment:
             config=self.config,
             tags=None,
             name=self.name,
-        ) as wb:
+            entity=self.wandb_entity,
+        ):
             logger.info(f"experiment {self.name}")
+            # TODO: add training
             train(...)

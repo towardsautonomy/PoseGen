@@ -6,8 +6,7 @@ import torch
 import torch.optim as optim
 import wandb
 
-from posegen.datasets import PoseGenCarsDataset, StanfordCarsDataset
-from posegen.utils import get_dataloaders
+from posegen.datasets import CarDataset
 from posegen.models import PoseGen_Discriminator, PoseGen
 from posegen.trainer import Trainer
 
@@ -124,12 +123,12 @@ def parse_args():
 
 
 def train(
-    dataset: str,
-    obj_data_dir: str,
+    data_dir: str,
     out_dir: str,
     name: str,
     resume: bool,
     seed: int,
+    seed_data: int,
     repeat_d: int,
     max_steps: int,
     eval_every: int,
@@ -144,7 +143,6 @@ def train(
     sil_data_dir: str,
     eval_split: int,
     num_workers: int,
-    wb: wandb.wandb_torch,
 ):
     r"""
     Configures and trains model.
@@ -197,16 +195,22 @@ def train(
         opt_d, lr_lambda=lambda s: 1.0 - (s / max_steps)
     )
 
-    # Configure dataloaders
-    datasets = {
-        "StanfordCarsDataset": StanfordCarsDataset,
-        "PoseGenCarsDataset": PoseGenCarsDataset,
-    }
-    dataset = datasets[dataset]
-    dl_train, dl_eval, dl_test = get_dataloaders(
-        dataset, obj_data_dir, bgnd_data_dir, sil_data_dir,
-        im_size, batch_size, eval_split, num_workers
-    )
+    ds_train = CarDataset()
+    ds_eval = ...
+    ds_test = ...
+    dl_train = ...
+    dl_eval = ...
+    dl_test = ...
+
+    # datasets = {
+    #     "StanfordCarsDataset": CarDataset,
+    #     "PoseGenCarsDataset": PoseGenCarsDataset,
+    # }
+    # dataset = datasets[dataset]
+    # dl_train, dl_eval, dl_test = get_dataloaders(
+    #     dataset, obj_data_dir, bgnd_data_dir, sil_data_dir,
+    #     im_size, batch_size, eval_split, num_workers
+    # )
 
     # Configure trainer
     trainer = Trainer(

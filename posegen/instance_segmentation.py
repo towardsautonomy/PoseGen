@@ -8,7 +8,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 from . import config
-from .datatype import BinaryMask, PILImage
+from .datatypes import BinaryMask, PILImage
 
 
 @dataclass

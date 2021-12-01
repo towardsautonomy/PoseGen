@@ -9,6 +9,7 @@ import torchvision.utils as vutils
 from torchmetrics import IS, KID
 import wandb
 
+from .datatypes import Parts
 from .metrics import FIDBetter, IoU
 
 
@@ -60,21 +61,21 @@ def hinge_loss_d(real_preds, fake_preds):
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
 
-def compute_loss_g(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_g, lambda_g=1.0, lambda_mse=2.5, pretrain=False):
+def compute_loss_g(net_g, net_d, real: Parts, loss_func_g, lambda_g=1.0, lambda_mse=2.5, pretrain=False):
     r"""
     General implementation to compute generator loss.
     """
-    fakes = net_g(real_obj, real_bgnd, real_sil)
+    fakes = net_g(real)
     fake_preds = net_d(fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
 
     if pretrain:
         # reconstruction loss
-        loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(real_obj, fakes)
+        loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(real.car, fakes)
         loss_g += loss_rec
 
     else:
-        inverted_sil = 1.0 - ((real_sil / 2.0) + 0.5)
+        inverted_sil = 1.0 - ((real.pose / 2.0) + 0.5)
         # reconstruction loss
         masked_bgnd = real_bgnd * inverted_sil
         masked_gen = fakes * inverted_sil
@@ -84,16 +85,15 @@ def compute_loss_g(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_g, lam
     return loss_g, fakes, fake_preds
 
 
-def compute_loss_d(net_g, net_d, real_obj, real_bgnd, real_sil, loss_func_d):
+def compute_loss_d(net_g, net_d, real: Parts, loss_func_d):
     r"""
     General implementation to compute discriminator loss.
     """
 
-    real_preds = net_d(real_obj).view(-1)
-    fakes = net_g(real_obj, real_bgnd, real_sil).detach()
+    real_preds = net_d(real.car).view(-1)
+    fakes = net_g(real).detach()
     fake_preds = net_d(fakes).view(-1)
     loss_d = loss_func_d(real_preds, fake_preds)
-
     return loss_d, fakes, real_preds, fake_preds
 
 
@@ -142,30 +142,24 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
         fake_images_list = []
         real_poses_list = []
 
-        for data in tqdm(dataloader, desc="Evaluating Model"):
-
+        for car, pose in tqdm(dataloader, desc="Evaluating Model"):
             # Compute losses and save intermediate outputs
             # reals, z = prepare_data_for_gan(data['image'], nz, device)
-            real_obj = data['obj_image'].to(device)
-            real_bgnd = data['bgnd_image'].to(device)
-            real_sil = data['sil_image'].to(device)
-            real_poses_list.append(real_sil)
+            real = Parts(car=car.to(device), pose=pose.to(device))
+            real_pose = pose.to(device)
+            real_poses_list.append(real.pose)
 
             loss_d, fakes, real_pred, fake_pred = compute_loss_d(
                 net_g,
                 net_d,
-                real_obj, 
-                real_bgnd, 
-                real_sil,
+                real,
                 hinge_loss_d,
             )
             fake_images_list.append(fakes)
             loss_g, _, _ = compute_loss_g(
                 net_g,
                 net_d,
-                real_obj, 
-                real_bgnd, 
-                real_sil,
+                real,
                 hinge_loss_g
             )
 
@@ -174,7 +168,7 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
             loss_ds.append(loss_d)
             real_preds.append(compute_prob(real_pred))
             fake_preds.append(compute_prob(fake_pred))
-            reals_inception = prepare_data_for_inception(real_obj, device)
+            reals_inception = prepare_data_for_inception(real.car, device)
             fakes_inception = prepare_data_for_inception(fakes, device)
             is_.update(fakes_inception)
             fid.update(reals_inception, real=True)
@@ -197,17 +191,17 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
 
         # Create samples
         if train:
-            true_samples = real_obj.cpu()
+            true_samples = real.car.cpu()
             true_samples = vutils.make_grid(true_samples, nrow=8, padding=4, normalize=True)
-            bgnd_samples = real_bgnd.cpu()
-            bgnd_samples = vutils.make_grid(bgnd_samples, nrow=8, padding=4, normalize=True)
-            sil_samples = real_sil.cpu()
-            sil_samples = vutils.make_grid(sil_samples, nrow=8, padding=4, normalize=True)
-            fake_samples = net_g(real_obj, real_bgnd, real_sil)
+            # bgnd_samples = real_bgnd.cpu()
+            # bgnd_samples = vutils.make_grid(bgnd_samples, nrow=8, padding=4, normalize=True)
+            pose_samples = real_pose.cpu()
+            pose_samples = vutils.make_grid(pose_samples, nrow=8, padding=4, normalize=True)
+            fake_samples = net_g(real)
             fake_samples = F.interpolate(fake_samples, 256).cpu()
             fake_samples = vutils.make_grid(fake_samples, nrow=8, padding=4, normalize=True)
 
-    return metrics if not train else (metrics, true_samples, bgnd_samples, sil_samples, fake_samples)
+    return metrics if not train else (metrics, true_samples, bgnd_samples, pose_samples, fake_samples)
 
 
 class Trainer:
@@ -316,7 +310,7 @@ class Trainer:
         self.logger.add_image("fake", fake_samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, real_obj, real_bgnd, real_sil):
+    def _train_step_g(self, real: Parts):
         r"""
         Performs a generator training step.
         """
@@ -328,14 +322,12 @@ class Trainer:
             lambda: compute_loss_g(
                 self.net_g,
                 self.net_d,
-                real_obj, 
-                real_bgnd, 
-                real_sil,
+                real,
                 hinge_loss_g,
             )[0],
         )
 
-    def _train_step_d(self, real_obj, real_bgnd, real_sil):
+    def _train_step_d(self, real: Parts):
         r"""
         Performs a discriminator training step.
         """
@@ -347,9 +339,7 @@ class Trainer:
             lambda: compute_loss_d(
                 self.net_g,
                 self.net_d,
-                real_obj, 
-                real_bgnd, 
-                real_sil,
+                real,
                 hinge_loss_d,
             )[0],
         )
@@ -368,16 +358,13 @@ class Trainer:
 
         while True:
             pbar = tqdm(self.train_dataloader)
-            for data in pbar:
-
+            for car, pose in pbar:
                 # Training step
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
-                real_obj = data['obj_image'].to(self.device)
-                real_bgnd = data['bgnd_image'].to(self.device)
-                real_sil = data['sil_image'].to(self.device)
-                loss_d = self._train_step_d(real_obj, real_bgnd, real_sil)
+                real = Parts(car=car.to(self.device), pose=pose.to(self.device))
+                loss_d = self._train_step_d(real)
                 if self.step % repeat_d == 0:
-                    loss_g = self._train_step_g(real_obj, real_bgnd, real_sil)
+                    loss_g = self._train_step_g(real)
 
                 pbar.set_description(
                     f"L(G):{loss_g.item():.2f}|L(D):{loss_d.item():.2f}|{self.step}/{max_steps}"
@@ -395,7 +382,7 @@ class Trainer:
                     )
                     self._log(*eval_res)
                     eval_metrics = eval_res[0]
-                    wandb.log(eval_metrics)  # TODO: add validation prefix
+                    wandb.log(eval_metrics)
                     test_res = evaluate_partial(dataloader=self.test_dataloader, train=False, prefix="test_")
                     wandb.log(test_res)
 

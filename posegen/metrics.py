@@ -6,7 +6,7 @@ import torch
 from torchmetrics.utilities.data import dim_zero_cat
 from torchmetrics import CosineSimilarity, FID
 
-from .datatype import BinaryMask
+from .datatypes import BinaryMask
 from .datasets.dataset import CarWithMask
 
 
@@ -42,7 +42,7 @@ class IoU:
 
 
 class FIDBetter(FID):
-    def sim(self):
+    def sim(self) -> float:
         real, fake = dim_zero_cat(self.real_features), dim_zero_cat(self.fake_features)
         cos = CosineSimilarity(reduction="mean")
         return cos(real, fake).item()
