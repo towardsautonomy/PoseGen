@@ -37,7 +37,6 @@ class CarWithMask:
             return Path("/tmp") / Path(f"car_mask_{md5}.npy")
 
     @property
-    @functools.lru_cache()
     def car_mask(self) -> BinaryMask:
         path = self.mask_path
         if path.exists():

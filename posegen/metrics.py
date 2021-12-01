@@ -33,7 +33,7 @@ class IoU:
         # TODO: all three channels the same?
         pose = self.real_poses[idx].cpu().numpy()[0]
         fake = self.fake_images[idx].cpu().numpy()
-        _, w, h = pose.shape
+        w, h = pose.shape
         car = CarWithMask(w, h, car_image_frame=fake)
         return self.iou(car.car_mask, pose)
 
