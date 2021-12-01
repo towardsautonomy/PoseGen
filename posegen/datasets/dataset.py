@@ -84,7 +84,7 @@ class CarDataset(Dataset):
 
         self._np_rand_state = np.random.RandomState(self.seed)
         self._df = self._split(self.path, self.extension, self.seed)
-        self._df_split = self._df[self._df.split == self.split].sort_values(by="path")
+        self._df_split = self._df[self._df.split == self.split].sort_values(by="md5")
         self._cars = (
             CarWithMask(car_image_path=path, width=self.width, height=self.height)
             for path in self._df_split.path
@@ -103,7 +103,8 @@ class CarDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         item = self._data[idx]
         car = self.transform_fn_cars(item.car_image)
-        pose = self.transform_fn_poses(item.mask)
+        mask_rgb = self._mask_to_rgb(item.mask)
+        pose = self.transform_fn_poses(mask_rgb)
         return car, pose
 
     @staticmethod
