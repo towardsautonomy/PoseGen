@@ -16,6 +16,13 @@ class Split(Enum):
     test = "test"
 
 
+class Architecture(Enum):
+    un_conditional = "un_conditional"
+    pose_only = "pose_only"
+    pose_and_car = "pose_and_car"
+    pose_car_background = "pose_car_background"
+
+
 @dataclass(frozen=False)
 class Parts:
     car: torch.Tensor
