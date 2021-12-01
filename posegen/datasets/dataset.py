@@ -39,7 +39,7 @@ class CarWithMask:
     @property
     def car_mask(self) -> BinaryMask:
         path = self.mask_path
-        if path.exists():
+        if path is not None and path.exists():
             return np.load(open(path, "rb"), allow_pickle=True)
         mask = get_mask(image=self.car_image)
         if mask is None:
