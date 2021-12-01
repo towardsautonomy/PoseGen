@@ -33,10 +33,13 @@ class IoU:
     def _compute_one(self, idx: int) -> float:
         # TODO: all three channels the same?
         pose = self.real_poses[idx].cpu().numpy()[0]
+        # since masks are {0,1}^{w x h} the dataset mean is > 0
+        # and the 1 and 0 values will be mapped to > 0 and < 0
+        pose_binary = pose > 0
         fake = self.tensor_to_image_fn(self.fake_images[idx])
         w, h = pose.shape
         car = CarWithMask(w, h, car_image_frame=fake)
-        return self.iou(car.car_mask, pose)
+        return self.iou(car.car_mask, pose_binary)
 
     def compute(self) -> float:
         ious = [self._compute_one(idx) for idx in range(self.n)]
