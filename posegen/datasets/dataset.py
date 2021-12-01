@@ -56,7 +56,7 @@ class CarWithMask:
 
     @property
     def car_image(self) -> PILImage:
-        if self.car_image_frame:
+        if self.car_image_frame is not None:
             return self._frame_to_image(self.car_image_frame)
         img = Image.open(self.car_image_path)
         return img.resize((self.width, self.height))
