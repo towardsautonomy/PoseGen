@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 
 
 def collate_fn(batch):
-    return [(b['image']) for b in batch]
+    return [(b["image"]) for b in batch]
 
 
 def split(
@@ -17,8 +17,16 @@ def split(
 
 
 def get_dataloaders(
-    dataset, obj_data_dir, bgnd_data_dir, sil_data_dir, imsize,
-    batch_size, eval_split=0.1, test_split=0.1, num_workers=16, seed=0,
+    dataset,
+    obj_data_dir,
+    bgnd_data_dir,
+    sil_data_dir,
+    imsize,
+    batch_size,
+    eval_split=0.1,
+    test_split=0.1,
+    num_workers=16,
+    seed=0,
 ):
     r"""
     Creates a dataloader from a directory containing image data.
@@ -28,7 +36,7 @@ def get_dataloaders(
         obj_dataroot=obj_data_dir,
         bgnd_dataroot=bgnd_data_dir,
         sil_dataroot=sil_data_dir,
-        resize_dim=(imsize,imsize),
+        resize_dim=(imsize, imsize),
         transforms=transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -43,7 +51,8 @@ def get_dataloaders(
     train, evaluation, test = split(dataset, eval_split, test_split, seed)
     dl_partial = functools.partial(
         torch.utils.data.DataLoader,
-        batch_size=batch_size, num_workers=num_workers,
+        batch_size=batch_size,
+        num_workers=num_workers,
     )
     dl_train = dl_partial(dataset=train, shuffle=True)
     dl_eval = dl_partial(dataset=evaluation, shuffle=False)

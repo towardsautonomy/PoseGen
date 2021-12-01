@@ -10,6 +10,7 @@ from torchmetrics import IS, KID
 import wandb
 
 from .datatypes import CarData
+from .datasets import CarDataset
 from .metrics import FIDBetter, IoU
 
 
@@ -121,7 +122,9 @@ def train_step(net, opt, sch, compute_loss):
     return loss
 
 
-def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
+def evaluate(
+    net_g, net_d, ds: CarDataset, dataloader, device, train=False, prefix: str = ""
+):
     r"""
     Evaluates model and logs metrics.
     Attributes:
@@ -189,7 +192,9 @@ def evaluate(net_g, net_d, dataloader, device, train=False, prefix: str = ""):
             f"{prefix}IS": is_.compute()[0].item(),
             f"{prefix}FID": fid.compute().item(),
             f"{prefix}KID": kid.compute()[0].item(),
-            f"{prefix}IoUMean": IoU(real_poses_list, fake_images_list).compute(),
+            f"{prefix}IoUMean": IoU(
+                real_poses_list, fake_images_list, ds.transform_reverse_fn_cars
+            ).compute(),
             f"{prefix}InceptionSimMean": fid.sim(),
         }
 
@@ -244,6 +249,7 @@ class Trainer:
         opt_d,
         sch_g,
         sch_d,
+        ds_train: CarDataset,
         train_dataloader,
         eval_dataloader,
         test_dataloader,
@@ -262,6 +268,7 @@ class Trainer:
         self.train_dataloader = train_dataloader
         self.eval_dataloader = eval_dataloader
         self.test_dataloader = test_dataloader
+        self.ds_train = ds_train
 
         # Setup training parameters
         self.device = device
@@ -386,7 +393,11 @@ class Trainer:
 
                 if self.step != 0 and self.step % eval_every == 0:
                     evaluate_partial = functools.partial(
-                        evaluate, net_g=self.net_g, net_d=self.net_d, device=self.device
+                        evaluate,
+                        net_g=self.net_g,
+                        net_d=self.net_d,
+                        device=self.device,
+                        ds=self.ds_train,
                     )
                     eval_res = evaluate_partial(
                         dataloader=self.eval_dataloader,

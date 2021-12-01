@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Callable, List
 
 import pandas as pd
 import torch
 from torchmetrics.utilities.data import dim_zero_cat
 from torchmetrics import CosineSimilarity, FID
 
-from .datatypes import BinaryMask
+from .datatypes import BinaryMask, PILImage
 from .datasets.dataset import CarWithMask
 
 
@@ -14,9 +14,10 @@ from .datasets.dataset import CarWithMask
 class IoU:
     real_poses_list: List[torch.Tensor]
     fake_images_list: List[torch.Tensor]
+    tensor_to_image_fn: Callable[[torch.Tensor], PILImage]
 
     def __post_init__(self):
-        # TODO: this may cause OOM => do batches at a time
+        # TODO: this may cause OOM => do 1 batch at a time
         self.real_poses = dim_zero_cat(self.real_poses_list)
         self.fake_images = dim_zero_cat(self.fake_images_list)
         self.n = len(self.real_poses)
@@ -32,7 +33,7 @@ class IoU:
     def _compute_one(self, idx: int) -> float:
         # TODO: all three channels the same?
         pose = self.real_poses[idx].cpu().numpy()[0]
-        fake = self.fake_images[idx].cpu().numpy()
+        fake = self.tensor_to_image_fn(self.fake_images[idx])
         w, h = pose.shape
         car = CarWithMask(w, h, car_image_frame=fake)
         return self.iou(car.car_mask, pose)

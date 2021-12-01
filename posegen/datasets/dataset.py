@@ -11,8 +11,8 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
-from .utils import get_md5
-from ..datatypes import BinaryMask, NumpyNdArray, PILImage, Split
+from .utils import get_md5, DeNormalize
+from ..datatypes import BinaryMask, PILImage, Split
 from ..instance_segmentation import get_mask
 
 
@@ -21,7 +21,7 @@ class CarWithMask:
     width: int
     height: int
     car_image_path: Path = None
-    car_image_frame: NumpyNdArray = None
+    car_image_frame: PILImage = None
     mask_random: Optional[BinaryMask] = None
     category_idx: Optional[int] = None
 
@@ -49,15 +49,15 @@ class CarWithMask:
             np.save(open(path, "wb"), mask)
         return mask
 
-    @staticmethod
-    def _frame_to_image(frame: NumpyNdArray) -> PILImage:
-        # TODO: this will be a generated image. Is this the right way to read?
-        return Image.fromarray(frame.astype("uint8"), "RGB")
-
     @property
     def car_image(self) -> PILImage:
-        if self.car_image_frame is not None:
-            return self._frame_to_image(self.car_image_frame)
+        return (
+            self.car_image_frame
+            if self.car_image_frame is not None
+            else self._get_image_from_path()
+        )
+
+    def _get_image_from_path(self) -> PILImage:
         img = Image.open(self.car_image_path)
         return img.resize((self.width, self.height))
 
@@ -113,6 +113,15 @@ class CarDataset(Dataset):
     @property
     def transform_fn_cars(self) -> Callable[[PILImage], torch.Tensor]:
         return self._transform_fn(self.transforms_mean_cars, self.transforms_std_cars)
+
+    @property
+    def transform_reverse_fn_cars(self) -> Callable[[torch.Tensor], PILImage]:
+        return transforms.Compose(
+            [
+                DeNormalize(self.transforms_mean_cars, self.transforms_std_cars),
+                transforms.ToPILImage(),
+            ]
+        )
 
     @property
     def transform_fn_poses(self) -> Callable[[PILImage], torch.Tensor]:

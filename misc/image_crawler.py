@@ -64,9 +64,11 @@ google_crawler = GoogleImageCrawler(
     feeder_threads=1,
     parser_threads=2,
     downloader_threads=8,
-    storage={'root_dir': 'data/tesla_cybertruck'})
+    storage={"root_dir": "data/tesla_cybertruck"},
+)
 filters = dict(
-    size='large',
-    license='commercial,modify',
-    date=((2014, 1, 1), (2021, 12, 30)))
-google_crawler.crawl(keyword='Tesla Cybertruck', filters=filters, max_num=100, file_idx_offset=0)
+    size="large", license="commercial,modify", date=((2014, 1, 1), (2021, 12, 30))
+)
+google_crawler.crawl(
+    keyword="Tesla Cybertruck", filters=filters, max_num=100, file_idx_offset=0
+)

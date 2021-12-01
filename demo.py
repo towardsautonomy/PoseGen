@@ -44,9 +44,7 @@ def parse_args():
         "--out_dir",
         type=str,
         default=os.path.join(root_dir, "out"),
-        help=(
-            "Path to output directory. "
-        ),
+        help=("Path to output directory. "),
     )
     parser.add_argument(
         "--name",
@@ -96,13 +94,19 @@ def demo(args):
 
     # Sanity check
     if not os.path.exists(args.obj_data_dir):
-        raise FileNotFoundError('Data directory {} is not found.'.format(args.obj_data_dir))
+        raise FileNotFoundError(
+            "Data directory {} is not found.".format(args.obj_data_dir)
+        )
 
     if not os.path.exists(args.bgnd_data_dir):
-        raise FileNotFoundError('Data directory {} is not found.'.format(args.bgnd_data_dir))
+        raise FileNotFoundError(
+            "Data directory {} is not found.".format(args.bgnd_data_dir)
+        )
 
     if not os.path.exists(args.sil_data_dir):
-        raise FileNotFoundError('Data directory {} is not found.'.format(args.sil_data_dir))
+        raise FileNotFoundError(
+            "Data directory {} is not found.".format(args.sil_data_dir)
+        )
 
     # Check existing experiment
     exp_dir = os.path.join(args.out_dir, args.name)
@@ -136,14 +140,14 @@ def demo(args):
     assert len(sil_files) > 0, "No silhouette files found."
 
     # compose transformations
-    transforms_func=transforms.Compose(
-                        [
-                            transforms.ToTensor(),
-                            # transforms.PILToTensor(),
-                            # transforms.ConvertImageDtype(torch.float),
-                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                        ]
-                    )
+    transforms_func = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            # transforms.PILToTensor(),
+            # transforms.ConvertImageDtype(torch.float),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+    )
 
     ## load images
     # select an object file and a background file randomly and keep it constant
@@ -154,13 +158,13 @@ def demo(args):
     # for obj_file in obj_files:
     # for bgnd_file in bgnd_files:
     for sil_file in sil_files:
-        
+
         # object image
         obj_image = Image.open(obj_file).resize((args.im_size, args.im_size))
         obj_image_copy = np.array(obj_image).copy()
         # check for grayscale image
-        if obj_image.mode == 'L':
-            obj_image = ImageOps.colorize(obj_image, black ="blue", white ="white")
+        if obj_image.mode == "L":
+            obj_image = ImageOps.colorize(obj_image, black="blue", white="white")
         obj_image = transforms_func(obj_image)
         obj_image = obj_image.unsqueeze(0)
 
@@ -168,21 +172,25 @@ def demo(args):
         bgnd_image = Image.open(bgnd_file).resize((args.im_size, args.im_size))
         bgnd_image_copy = np.array(bgnd_image).copy()
         # check for grayscale image
-        if bgnd_image.mode == 'L':
-            bgnd_image = ImageOps.colorize(bgnd_image, black ="blue", white ="white")
+        if bgnd_image.mode == "L":
+            bgnd_image = ImageOps.colorize(bgnd_image, black="blue", white="white")
         bgnd_image = transforms_func(bgnd_image)
         bgnd_image = bgnd_image.unsqueeze(0)
         # silhouette image
         sil_image = Image.open(sil_file).resize((args.im_size, args.im_size))
         sil_image_copy = np.array(sil_image).copy()
         # check for grayscale image
-        if bgnd_image.mode == 'L':
-            sil_image = ImageOps.colorize(sil_image, black ="blue", white ="white")
+        if bgnd_image.mode == "L":
+            sil_image = ImageOps.colorize(sil_image, black="blue", white="white")
         sil_image = transforms_func(sil_image)
         sil_image = sil_image.unsqueeze(0)
 
         # forward pass
-        gen_im = net_g(obj_image.to(args.device), bgnd_image.to(args.device), sil_image.to(args.device))
+        gen_im = net_g(
+            obj_image.to(args.device),
+            bgnd_image.to(args.device),
+            sil_image.to(args.device),
+        )
 
         # visualize the result
         gen_im = denormalize(gen_im.detach())
