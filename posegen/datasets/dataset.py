@@ -23,7 +23,7 @@ from ..datatypes import (
 )
 
 
-@dataclass(frozen=False)
+@dataclass
 class CarDataset(Dataset):
     """
     TODO: generalize this to ObjectDataset

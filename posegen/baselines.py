@@ -84,7 +84,6 @@ class Baseline2(Baseline):
 
 class Baseline3(Baseline):
     @property
-    @functools.lru_cache(maxsize=1)
     def train_masks(self) -> Dict[int, BinaryMask]:
         return {idx: self.ds_train.data[idx] for idx in range(len(self.ds_train))}
 
