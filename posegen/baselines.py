@@ -15,6 +15,7 @@ from .datatypes import (
     CarWithMask,
     PILImage,
     Split,
+    TensorToPILFn,
 )
 from .metrics import MetricCalculator, Metrics, iou
 from .utils import get_device
@@ -27,6 +28,7 @@ class Baseline:
     batch_size: int
     num_workers: int
     seed: int
+    tensor_to_pil_fn_provided: Optional[TensorToPILFn] = None
 
     def __post_init__(self):
         self.random_state = np.random.RandomState(seed=self.seed)
@@ -35,13 +37,17 @@ class Baseline:
     def device(self) -> torch.device:
         return get_device()
 
+    @property
+    def tensor_to_pil_fn(self) -> TensorToPILFn:
+        return self.tensor_to_pil_fn_provided or self.ds.transform_reverse_fn_cars
+
     def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
         raise NotImplementedError
 
     def compute(self) -> Metrics:
         metrics_calc = MetricCalculator(
             device=self.device,
-            tensor_to_image_fn=self.ds.transform_reverse_fn_cars,
+            tensor_to_image_fn=self.tensor_to_pil_fn,
         )
         dl = self.ds.get_dataloader(
             batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers
@@ -111,6 +117,7 @@ class FromDisk(Baseline):
     std: Tuple[float, ...]
 
     def _get_one_fake(self, idx: int, batch_idx: int) -> torch.Tensor:
+        # TODO: incorporate mean and std
         data_on_disk = np.load(self.path, allow_pickle=True).item()
         idx_ds = batch_idx * self.batch_size + idx
         data_path = self.ds.data[idx_ds].car_image_path
