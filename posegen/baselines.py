@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 import numpy as np
 from PIL import Image
@@ -8,6 +8,7 @@ import torch
 
 from . import config
 from .datasets import CarDataset, tesla
+from .datasets.utils import tensor_to_pil
 from .datatypes import (
     BinaryMask,
     CarTensorData,
@@ -134,6 +135,12 @@ class FromDisk(Baseline):
         return torch.stack(
             [self._get_one_fake(idx, batch_idx) for idx in range(len(real))]
         )
+
+
+FromDiskShubham = functools.partial(
+    FromDisk,
+    tensor_to_pil_fn_provided=tensor_to_pil((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+)
 
 
 @dataclass(frozen=True)
