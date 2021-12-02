@@ -1,8 +1,12 @@
 import hashlib
 from pathlib import Path
+from typing import Tuple
 
 import torch
 import torchvision
+from torchvision.transforms import transforms
+
+from ..datatypes import TensorToPILFn
 
 
 def get_md5(path: Path) -> str:
@@ -24,3 +28,12 @@ class DeNormalize(torchvision.transforms.Normalize):
 
     def __call__(self, tensor):
         return super().__call__(tensor.clone())
+
+
+def tensor_to_pil(mean: Tuple[float, ...], std: Tuple[float, ...]) -> TensorToPILFn:
+    return transforms.Compose(
+        [
+            DeNormalize(mean, std),
+            transforms.ToPILImage(),
+        ]
+    )

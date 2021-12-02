@@ -12,6 +12,8 @@ from .datasets.utils import get_md5
 
 BinaryMask = Frame = NumpyNdArray = np.ndarray
 PILImage = Image.Image
+TensorToPILFn = Callable[[torch.Tensor], PILImage]
+PILToTensorFn = Callable[[PILImage], torch.Tensor]
 
 
 class Split(Enum):
@@ -47,7 +49,7 @@ class CarWithMask:
     def from_tensor(
         cls,
         tensor: torch.Tensor,
-        tensor_to_image_fn: Callable[[torch.Tensor], PILImage],
+        tensor_to_image_fn: TensorToPILFn,
     ) -> "CarWithMask":
         _, w, h = tensor.shape
         image = tensor_to_image_fn(tensor)

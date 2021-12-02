@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Callable, List
+from typing import List
 
 import pandas as pd
 import torch
@@ -12,7 +12,7 @@ from .datatypes import (
     CarTensorData,
     CarTensorDataBatch,
     CarWithMask,
-    PILImage,
+    TensorToPILFn,
 )
 from .utils import binarize_pose
 
@@ -28,7 +28,7 @@ class Metrics:
 
 @dataclass(frozen=False)
 class IoU:
-    tensor_to_image_fn: Callable[[torch.Tensor], PILImage]
+    tensor_to_image_fn: TensorToPILFn
     reals: List[CarTensorDataBatch] = field(default_factory=list)
     fakes: List[torch.Tensor] = field(default_factory=list)
 
@@ -70,7 +70,7 @@ class FIDBetter(FID):
 @dataclass
 class MetricCalculator:
     device: torch.device
-    tensor_to_image_fn: Callable[[torch.Tensor], PILImage]
+    tensor_to_image_fn: TensorToPILFn
 
     def __post_init__(self):
         # TODO: what is this magic 32?

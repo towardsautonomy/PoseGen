@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 import functools
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 from PIL import Image
 import torch
 
 from . import config
-from .datasets import CarDataset
+from .datasets import CarDataset, tesla
 from .datatypes import (
     BinaryMask,
     CarTensorData,
@@ -17,14 +17,13 @@ from .datatypes import (
     Split,
 )
 from .metrics import MetricCalculator, Metrics, iou
-from .datasets import tesla
 from .utils import get_device
 
 
 @dataclass
 class Baseline:
     ds: CarDataset
-    ds_train: CarDataset
+    ds_train: Optional[CarDataset]
     batch_size: int
     num_workers: int
     seed: int
@@ -36,7 +35,7 @@ class Baseline:
     def device(self) -> torch.device:
         return get_device()
 
-    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
+    def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
         raise NotImplementedError
 
     def compute(self) -> Metrics:
@@ -47,33 +46,29 @@ class Baseline:
         dl = self.ds.get_dataloader(
             batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers
         )
-        for real in dl:
-            fake_car = self._get_fakes(real)
+        for batch_idx, real in enumerate(dl):
+            fake_car = self._get_fakes(real, batch_idx)
             metrics_calc.update(real, fake_car)
         return metrics_calc.compute()
 
 
-@dataclass
 class Baseline1(Baseline):
     def _random_rgb_image(self, w: int, h: int) -> PILImage:
         np_array = self.random_state.rand(w, h, 3) * 255
         return Image.fromarray(np_array.astype("uint8")).convert("RGB")
 
-    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
+    def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
         """
         Random RGBs.
         """
         b, _, w, h = real.car.shape
         return torch.stack(
-            [
-                self.ds_train.transform_fn_cars(self._random_rgb_image(w, h))
-                for _ in range(b)
-            ]
+            [self.ds.transform_fn_cars(self._random_rgb_image(w, h)) for _ in range(b)]
         )
 
 
 class Baseline2(Baseline):
-    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
+    def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
         """
         Random image from train.
         """
@@ -100,12 +95,36 @@ class Baseline3(Baseline):
         best_train_idx = best[1]
         return self.ds_train[best_train_idx].car
 
-    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
+    def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
         """
         Nearest image in train via IoU.
         """
         return torch.stack(
             [self._get_one_fake(real.get_idx(idx)) for idx in range(len(real))]
+        )
+
+
+@dataclass
+class FromDisk(Baseline):
+    path: str
+    mean: Tuple[float, ...]
+    std: Tuple[float, ...]
+
+    def _get_one_fake(self, idx: int, batch_idx: int) -> torch.Tensor:
+        data_on_disk = np.load(self.path).item()
+        idx_ds = batch_idx * self.batch_size + idx
+        data_path = self.ds.data[idx_ds].car_image_path
+        loc, name = str(data_path).split("/")[-2:]
+        key_to_find = f"tesla-model-3-midnight-silver/{loc}/image/{name}"
+        if key_to_find in data_on_disk:
+            return torch.tensor(data_on_disk[key_to_find])
+        else:
+            print(f"could not find {key_to_find}")
+            return torch.rand(3, 256, 256)
+
+    def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
+        return torch.stack(
+            [self._get_one_fake(idx, batch_idx) for idx in range(len(real))]
         )
 
 

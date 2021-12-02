@@ -20,10 +20,9 @@ seed = 0
 
 # baselines
 baselines_tesla_batch_size = 32
-baselines_tesla_num_workers = 1
+baselines_tesla_num_workers = 8
 
 # transforms
-# TODO: where did these come from?
 transforms_mean_cars_tesla = (0.5, 0.5, 0.5)
 transforms_std_cars_tesla = (0.24, 0.24, 0.24)
 transforms_mean_poses_tesla = (0.25, 0.25, 0.25)

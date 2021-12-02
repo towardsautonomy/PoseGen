@@ -1,14 +1,13 @@
 import functools
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Sequence, Tuple
+from typing import List, Sequence, Tuple
 from torch.utils.data import DataLoader
 
 import mmh3
 import numpy as np
 import pandas as pd
 from PIL import Image
-import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
@@ -20,6 +19,8 @@ from ..datatypes import (
     CarTensorDataBatch,
     PILImage,
     Split,
+    PILToTensorFn,
+    TensorToPILFn,
 )
 
 
@@ -89,11 +90,11 @@ class CarDataset(Dataset):
         return Image.fromarray(mask).convert("RGB")
 
     @property
-    def transform_fn_cars(self) -> Callable[[PILImage], torch.Tensor]:
+    def transform_fn_cars(self) -> PILToTensorFn:
         return self._transform_fn(self.transforms_mean_cars, self.transforms_std_cars)
 
     @property
-    def transform_reverse_fn_cars(self) -> Callable[[torch.Tensor], PILImage]:
+    def transform_reverse_fn_cars(self) -> TensorToPILFn:
         return transforms.Compose(
             [
                 DeNormalize(self.transforms_mean_cars, self.transforms_std_cars),
@@ -102,13 +103,11 @@ class CarDataset(Dataset):
         )
 
     @property
-    def transform_fn_poses(self) -> Callable[[PILImage], torch.Tensor]:
+    def transform_fn_poses(self) -> PILToTensorFn:
         return self._transform_fn(self.transforms_mean_poses, self.transforms_std_poses)
 
     @staticmethod
-    def _transform_fn(
-        mean: Tuple[float, ...], std: Tuple[float, ...]
-    ) -> Callable[[PILImage], torch.Tensor]:
+    def _transform_fn(mean: Tuple[float, ...], std: Tuple[float, ...]) -> PILToTensorFn:
         return transforms.Compose(
             [
                 transforms.ToTensor(),
