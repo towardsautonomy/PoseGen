@@ -58,29 +58,31 @@ def hinge_loss_d(real_preds, fake_preds):
 
     return F.relu(1.0 - real_preds).mean() + F.relu(1.0 + fake_preds).mean()
 
-
-def compute_loss_g(net_g, net_d, real_obj, target_obj, real_sil, loss_func_g, lambda_g=0.2, lambda_mse=10.0, pretrain=False):
+def compute_loss_g(net_g, net_d, real_obj, target_obj, real_sil, loss_func_g, lambda_g=0.2, lambda_mse=10.0, unconditional=False, pretrain=False):
     r"""
     General implementation to compute generator loss.
     """
+    if unconditional: lambda_g = 1.0
     fakes = net_g(real_obj, real_sil)
     fake_preds = net_d(fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
 
-    if pretrain:
-        # reconstruction loss
-        loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(real_obj, fakes)
-        loss_g += loss_rec
+    if not unconditional:
+        if pretrain:
+            # reconstruction loss
+            loss_rec = lambda_mse * torch.nn.MSELoss(reduction='mean')(real_obj, fakes)
+            loss_g += loss_rec
 
-    else:
-        inverted_sil = 1.0 - ((real_sil / 2.0) + 0.5)
-        obj_mask = (real_sil / 2.0) + 0.5
-        # reconstruction loss
-        masked_obj = target_obj * obj_mask
-        masked_gen = fakes * obj_mask
-        loss_rec = lambda_mse * \
-                    torch.mean(obj_mask * torch.nn.SmoothL1Loss(reduction='none')(masked_obj, masked_gen))
-        loss_g += loss_rec
+        else:
+            inverted_sil = 1.0 - ((real_sil / 2.0) + 0.5)
+            obj_mask = (real_sil / 2.0) + 0.5
+            # reconstruction loss
+            masked_obj = target_obj * obj_mask
+            masked_gen = fakes * obj_mask
+            loss_rec = lambda_mse * \
+                        torch.mean(obj_mask * torch.nn.MSELoss(reduction='none')(masked_obj, masked_gen))
+            loss_g += loss_rec
+
     return loss_g, fakes, fake_preds
 
 
@@ -112,7 +114,7 @@ def train_step(net, opt, sch, compute_loss):
     return loss
 
 
-def evaluate(net_g, net_d, dataloader, device, train=False):
+def evaluate(net_g, net_d, dataloader, device, train=False, unconditional=False):
     r"""
     Evaluates model and logs metrics.
     Attributes:
@@ -160,7 +162,8 @@ def evaluate(net_g, net_d, dataloader, device, train=False):
                 real_obj, 
                 target_obj,
                 real_sil,
-                hinge_loss_g
+                hinge_loss_g,
+                unconditional=unconditional,
             )
 
             # Update metrics
@@ -233,6 +236,7 @@ class Trainer:
         nz,
         log_dir,
         ckpt_dir,
+        unconditional,
         device,
     ):
         # Setup models, dataloader, optimizers
@@ -244,6 +248,7 @@ class Trainer:
         self.sch_d = sch_d
         self.train_dataloader = train_dataloader
         self.eval_dataloader = eval_dataloader
+        self.unconditional = unconditional
 
         # Setup training parameters
         self.device = device
@@ -322,6 +327,7 @@ class Trainer:
                 target_obj,
                 real_sil,
                 hinge_loss_g,
+                unconditional=self.unconditional,
             )[0],
         )
 
@@ -380,6 +386,7 @@ class Trainer:
                             self.eval_dataloader,
                             self.device,
                             train=True,
+                            unconditional=self.unconditional
                         )
                     )
 

@@ -151,7 +151,8 @@ class Decoder(nn.Module):
         nn.init.xavier_uniform_(self.c8.weight.data, 1.0)
 
     def forward(self, x, enc_hidden_layers):
-        h1_enc, h2_enc, h3_enc, h4_enc, h5_enc, h6_enc, h7_enc, h8_enc, h9_enc = enc_hidden_layers
+        if self.skip_connections:
+            h1_enc, h2_enc, h3_enc, h4_enc, h5_enc, h6_enc, h7_enc, h8_enc, h9_enc = enc_hidden_layers
         h1 = self.l1(x)
         h2 = self.unfatten(h1)
         if self.skip_connections: h2 += h7_enc
@@ -173,25 +174,58 @@ class Decoder(nn.Module):
         
         return y        
 class PoseGen(nn.Module):
-    def __init__(self, ndf=1024, ngf: int = 512, nz: int=128, bottom_width: int = 4, skip_connections: bool = False, n_encoders: int = 2):
+    def __init__(self, ndf: int=1024, 
+                       ngf: int=512, 
+                       nz: int=128, 
+                       bottom_width: int=4, 
+                       skip_connections: bool=False, 
+                       unconditional: bool=True,
+                       appearance_input: bool=False,
+                       bgnd_input: bool=False):
         super().__init__()
+        self.unconditional = unconditional
+        self.appearance_input = appearance_input
+        self.bgnd_input = bgnd_input
+        self.nz = nz
         # object appearance encoder
         self.obj_appear_enc = Encoder(ndf, nz)
         # background encoder
         self.background_enc = Encoder(ndf, nz)
         # pose encoder
         self.pose_enc = Encoder(ndf, nz)
-        self.dec = Decoder(nz, ngf, bottom_width, skip_connections=skip_connections, n_encoders=n_encoders)
+        # number of encoders
+        self.n_encoders = 1 + int(self.appearance_input) + int(self.bgnd_input)
+        self.dec = Decoder(nz, ngf, bottom_width, skip_connections=skip_connections, n_encoders=self.n_encoders)
 
     def forward(self, x_obj, x_silhouette):
-        z_appear, appear_hidden_features = self.obj_appear_enc(x_obj)
-        # z_bgnd, bgnd_hidden_features = self.background_enc(x_bgnd)
-        z_pose, pose_hidden_features = self.pose_enc(x_silhouette)
-        # concatenate latent vectors
-        z = torch.cat((z_appear, z_pose), dim=1)
-        # hidden features
-        hidden_features = [a + b for a, b in \
-                            zip(appear_hidden_features, pose_hidden_features)]
-        # reconstruct
+        # check if unconditional generation is enabled
+        if self.unconditional:
+            z = torch.randn(x_obj.size(0), self.nz, device=x_obj.device)
+            hidden_features = []
+            self.skip_connections = False
+            self.appearance_input = False
+            self.bgnd_input = False
+        else:
+            if self.appearance_input:
+                z_appear, appear_hidden_features = self.obj_appear_enc(x_obj)
+            if self.bgnd_input:
+                z_bgnd, bgnd_hidden_features = self.background_enc(x_silhouette)
+            z_pose, pose_hidden_features = self.pose_enc(x_silhouette)
+
+            # add the latent vectors together
+            hidden_features = pose_hidden_features
+            if self.appearance_input:
+                hidden_features = [a + b for a, b in zip(pose_hidden_features, appear_hidden_features)]
+            elif self.appearance_input and self.bgnd_input:
+                hidden_features = [a + b + c for a, b, c in \
+                                zip(pose_hidden_features, appear_hidden_features, bgnd_hidden_features)]
+
+            # concatenate latent vectors
+            z_list = [z_pose]
+            z_list += [z_appear] if self.appearance_input else []
+            z_list += [z_bgnd] if self.bgnd_input else []
+            z = torch.cat(z_list, dim=1)
+
+        # pass through decoder
         out = self.dec(z, hidden_features)
         return out

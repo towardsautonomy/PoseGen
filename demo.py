@@ -25,12 +25,12 @@ def parse_args():
         default=os.path.join(root_dir, "data"),
         help="Path to object dataset directory.",
     )
-    parser.add_argument(
-        "--bgnd_data_dir",
-        type=str,
-        default=os.path.join(root_dir, "data"),
-        help="Path to background dataset directory.",
-    )
+    # parser.add_argument(
+    #     "--bgnd_data_dir",
+    #     type=str,
+    #     default=os.path.join(root_dir, "data"),
+    #     help="Path to background dataset directory.",
+    # )
     parser.add_argument(
         "--sil_data_dir",
         type=str,
@@ -53,6 +53,15 @@ def parse_args():
             "Name of the current experiment."
             "Checkpoints are stored in '{out_dir}/{name}/ckpt/'. "
         ),
+    )
+    parser.add_argument(
+        "--variant",
+        type=str,
+        required=True,
+        help=(
+            "Variant of experiment to run"
+        ),
+        choices=['unconditional', 'pose_conditioned', 'pose_appearance_conditioned', 'pose_appearance_bgnd_conditioned']
     )
 
     parser.add_argument(
@@ -96,8 +105,8 @@ def demo(args):
     if not os.path.exists(args.obj_data_dir):
         raise FileNotFoundError('Data directory {} is not found.'.format(args.obj_data_dir))
 
-    if not os.path.exists(args.bgnd_data_dir):
-        raise FileNotFoundError('Data directory {} is not found.'.format(args.bgnd_data_dir))
+    # if not os.path.exists(args.bgnd_data_dir):
+    #     raise FileNotFoundError('Data directory {} is not found.'.format(args.bgnd_data_dir))
 
     if not os.path.exists(args.sil_data_dir):
         raise FileNotFoundError('Data directory {} is not found.'.format(args.sil_data_dir))
@@ -112,7 +121,10 @@ def demo(args):
             raise FileNotFoundError(f"Directory '{d}' is not found.")
 
     # Setup models
-    net_g = PoseGen(nz=256).to(args.device)
+    net_g = PoseGen(nz=256, 
+                    unconditional=(args.variant == 'unconditional'),
+                    appearance_input=(args.variant == 'pose_appearance_conditioned'),
+                    bgnd_input=(args.variant == 'pose_appearance_bgnd_conditioned')).to(args.device)
 
     # load weights
     ckpt_paths = [f for f in os.listdir(ckpt_dir) if f.endswith(".pth")]
@@ -125,12 +137,12 @@ def demo(args):
 
     # get filenames
     obj_files = sorted(glob.glob(os.path.join(args.obj_data_dir, "*.JPEG")))
-    bgnd_files = sorted(glob.glob(os.path.join(args.bgnd_data_dir, "*.JPEG")))
-    sil_files = sorted(glob.glob(os.path.join(args.sil_data_dir, "*.png")))
+    # bgnd_files = sorted(glob.glob(os.path.join(args.bgnd_data_dir, "*.JPEG")))
+    sil_files = sorted(glob.glob(os.path.join(args.sil_data_dir, "*.JPEG")))
 
     # check if number of files are greater than 0
     assert len(obj_files) > 0, "No object files found."
-    assert len(bgnd_files) > 0, "No background files found."
+    # assert len(bgnd_files) > 0, "No background files found."
     assert len(sil_files) > 0, "No silhouette files found."
 
     # compose transformations
@@ -146,7 +158,7 @@ def demo(args):
     ## load images
     # select an object file and a background file randomly and keep it constant
     obj_file = np.random.choice(obj_files)
-    bgnd_file = np.random.choice(bgnd_files)
+    # bgnd_file = np.random.choice(bgnd_files)
     sil_file = np.random.choice(sil_files)
 
     # for obj_file in obj_files:
@@ -162,25 +174,25 @@ def demo(args):
         obj_image = transforms_func(obj_image)
         obj_image = obj_image.unsqueeze(0)
 
-        # background image
-        bgnd_image = Image.open(bgnd_file).resize((args.im_size, args.im_size))
-        bgnd_image_copy = np.array(bgnd_image).copy()
-        # check for grayscale image
-        if bgnd_image.mode == 'L':
-            bgnd_image = ImageOps.colorize(bgnd_image, black ="blue", white ="white")
-        bgnd_image = transforms_func(bgnd_image)
-        bgnd_image = bgnd_image.unsqueeze(0)
+        # # background image
+        # bgnd_image = Image.open(bgnd_file).resize((args.im_size, args.im_size))
+        # bgnd_image_copy = np.array(bgnd_image).copy()
+        # # check for grayscale image
+        # if bgnd_image.mode == 'L':
+        #     bgnd_image = ImageOps.colorize(bgnd_image, black ="blue", white ="white")
+        # bgnd_image = transforms_func(bgnd_image)
+        # bgnd_image = bgnd_image.unsqueeze(0)
         # silhouette image
         sil_image = Image.open(sil_file).resize((args.im_size, args.im_size))
-        sil_image_copy = np.array(sil_image).copy()
         # check for grayscale image
-        if bgnd_image.mode == 'L':
-            sil_image = ImageOps.colorize(sil_image, black ="blue", white ="white")
+        if sil_image.mode == 'L':
+            sil_image = ImageOps.colorize(sil_image, black ="black", white ="white")
+        sil_image_copy = np.array(sil_image).copy()
         sil_image = transforms_func(sil_image)
         sil_image = sil_image.unsqueeze(0)
 
         # forward pass
-        gen_im = net_g(obj_image.to(args.device), bgnd_image.to(args.device), sil_image.to(args.device))
+        gen_im = net_g(obj_image.to(args.device), sil_image.to(args.device))
 
         # visualize the result
         gen_im = denormalize(gen_im.detach())
@@ -190,9 +202,9 @@ def demo(args):
 
         # visualize the result
         obj_image_copy = cv2.cvtColor(obj_image_copy, cv2.COLOR_RGB2BGR)
-        bgnd_image_copy = cv2.cvtColor(bgnd_image_copy, cv2.COLOR_RGB2BGR)
+        # bgnd_image_copy = cv2.cvtColor(bgnd_image_copy, cv2.COLOR_RGB2BGR)
         gen_im = cv2.cvtColor(gen_im, cv2.COLOR_RGB2BGR)
-        img_viz = cv2.hconcat([obj_image_copy, bgnd_image_copy, sil_image_copy, gen_im])
+        img_viz = cv2.hconcat([obj_image_copy, sil_image_copy, gen_im])
         cv2.imshow("Generated Image", img_viz)
         cv2.waitKey(0)
 

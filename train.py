@@ -53,6 +53,15 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--variant",
+        type=str,
+        required=True,
+        help=(
+            "Variant of experiment to run"
+        ),
+        choices=['unconditional', 'pose_conditioned', 'pose_appearance_conditioned', 'pose_appearance_bgnd_conditioned']
+    )
+    parser.add_argument(
         "--resume",
         default=False,
         action="store_true",
@@ -146,7 +155,11 @@ def train(args):
 
     # Setup models
     # net_g = PoseGen_Generator()
-    net_g = PoseGen(nz=nz)
+    net_g = PoseGen(nz=nz, 
+                    unconditional=(args.variant == 'unconditional'),
+                    appearance_input=(args.variant == 'pose_appearance_conditioned'),
+                    bgnd_input=(args.variant == 'pose_appearance_bgnd_conditioned')
+                  )
     # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
     net_d = PoseGen_Discriminator()
 
@@ -185,7 +198,8 @@ def train(args):
         nz,
         log_dir,
         ckpt_dir,
-        torch.device(args.device),
+        unconditional=(args.variant == 'unconditional'),
+        device=torch.device(args.device),
     )
 
     # Train model
