@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torchmetrics.utilities.data import dim_zero_cat
 from torchmetrics import CosineSimilarity, FID, IS, KID
 
-from .datatypes import BinaryMask, CarTensorDataBatch, PILImage
+from .datatypes import BinaryMask, CarTensorData, CarTensorDataBatch, PILImage
 from .datasets.dataset import CarWithMask
 
 
@@ -46,7 +46,7 @@ class IoU:
         den = (m1 | m2).sum()
         return num / den if den > 0 else 0
 
-    def _compute_one(self, real: CarTensorDataBatch, fake: torch.Tensor) -> float:
+    def _compute_one(self, real: CarTensorData, fake: torch.Tensor) -> float:
         # TODO: all three channels the same?
         pose = real.pose.cpu().numpy()[0]
         # since masks are {0,1}^{w x h} the dataset mean is > 0

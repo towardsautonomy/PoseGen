@@ -23,10 +23,10 @@ class InstanceSegmentation:
         coco_categories: Sequence[str] = config.coco_instance_category_names,
         threshold: float = config.instance_segmentation_threshold,
     ):
+        self.device = get_device()
         self.model = self._get_instance_segmentation_model()
         self.coco_categories = coco_categories
         self.threshold = threshold
-        self.device = get_device()
 
     def _get_instance_segmentation_model(self):
         model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)

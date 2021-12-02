@@ -33,7 +33,10 @@ class Baseline:
         raise NotImplementedError
 
     def compute(self) -> Metrics:
-        metrics_calc = MetricCalculator(self.device, self.ds.transform_reverse_fn_cars)
+        metrics_calc = MetricCalculator(
+            device=self.device,
+            tensor_to_image_fn=self.ds.transform_reverse_fn_cars,
+        )
         dl = self.ds.get_dataloader(
             batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers
         )
