@@ -111,7 +111,7 @@ class FromDisk(Baseline):
     std: Tuple[float, ...]
 
     def _get_one_fake(self, idx: int, batch_idx: int) -> torch.Tensor:
-        data_on_disk = np.load(self.path, allow_pickle=False).item()
+        data_on_disk = np.load(self.path, allow_pickle=True).item()
         idx_ds = batch_idx * self.batch_size + idx
         data_path = self.ds.data[idx_ds].car_image_path
         loc, name = str(data_path).split("/")[-2:]
