@@ -8,8 +8,15 @@ import torch
 
 from . import config
 from .datasets import CarDataset
-from .datatypes import CarTensorDataBatch, PILImage, Split
-from .metrics import MetricCalculator, Metrics
+from .datatypes import (
+    BinaryMask,
+    CarTensorData,
+    CarTensorDataBatch,
+    CarWithMask,
+    PILImage,
+    Split,
+)
+from .metrics import MetricCalculator, Metrics, iou
 from .datasets import tesla
 from .utils import get_device
 
@@ -75,12 +82,30 @@ class Baseline2(Baseline):
         return torch.stack([self.ds_train[idx].car for idx in idxs])
 
 
-# class Baseline3(Baseline):
-#     def _get_fakes(self, real: CarTensorData) -> torch.Tensor:
-#         """
-#         Nearest image in train. Almost doesn't make sense.
-#         """
-#         pass
+class Baseline3(Baseline):
+    @property
+    @functools.lru_cache(maxsize=1)
+    def train_masks(self) -> Dict[int, BinaryMask]:
+        return {idx: self.ds_train.data[idx] for idx in range(len(self.ds_train))}
+
+    def _get_one_fake(self, real: CarTensorData) -> torch.Tensor:
+        data = CarWithMask.from_tensor(
+            real.car, self.ds_train.transform_reverse_fn_cars
+        )
+        mask = data.car_mask
+        best = max(
+            (iou(mask, train_mask), idx) for idx, train_mask in self.train_masks.items()
+        )
+        best_train_idx = best[1]
+        return self.ds_train[best_train_idx].car
+
+    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
+        """
+        Nearest image in train via IoU.
+        """
+        return torch.stack(
+            [self._get_one_fake(real.get_idx(idx)) for idx in range(len(real))]
+        )
 
 
 @dataclass(frozen=True)
@@ -88,6 +113,9 @@ class BaselinesTesla:
     batch_size: int = config.baselines_tesla_batch_size
     num_workers: int = config.baselines_tesla_num_workers
     seed: int = config.seed
+    baseline1: bool = True
+    baseline2: bool = True
+    baseline3: bool = True
 
     def _baselines_tesla(self, split: Split) -> Dict[str, Metrics]:
         fn = functools.partial(tesla.get_tesla_dataset, random_pose=False)
@@ -100,10 +128,15 @@ class BaselinesTesla:
             batch_size=self.batch_size,
             seed=self.seed,
         )
-        return dict(
-            baseline1=Baseline1(**args).compute(),
-            baseline2=Baseline2(**args).compute(),
-        )
+        return {
+            f"baseline_{b_nbr}": b_cls(**args).compute()
+            for b_include, b_nbr, b_cls in (
+                (self.baseline1, 1, Baseline1),
+                (self.baseline2, 2, Baseline2),
+                (self.baseline3, 3, Baseline3),
+            )
+            if b_include
+        }
 
     def validation(self) -> Dict[str, Metrics]:
         return self._baselines_tesla(Split.validation)

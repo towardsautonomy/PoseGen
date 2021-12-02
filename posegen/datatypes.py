@@ -1,9 +1,15 @@
+from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, NamedTuple
+from pathlib import Path
+from typing import Callable, List, Optional
 
 import numpy as np
 import torch
 from PIL import Image
+
+from .instance_segmentation import get_mask
+from .datasets.utils import get_md5
+
 
 BinaryMask = Frame = NumpyNdArray = np.ndarray
 PILImage = Image.Image
@@ -22,19 +28,78 @@ class Architecture(Enum):
     pose_car_background = "pose_car_background"
 
 
-class CarTensorData(NamedTuple):
+@dataclass
+class CarTensorData:
     car: torch.Tensor
     pose: torch.Tensor
     background: Optional[torch.Tensor] = None
 
 
-class CarTensorDataBatch(NamedTuple):
+@dataclass
+class CarWithMask:
+    width: int
+    height: int
+    car_image_path: Path = None
+    car_image_frame: PILImage = None
+    mask_random: Optional[BinaryMask] = None
+    category_idx: Optional[int] = None
+
+    @classmethod
+    def from_tensor(
+        cls,
+        tensor: torch.Tensor,
+        tensor_to_image_fn: Callable[[torch.Tensor], PILImage],
+    ) -> "CarWithMask":
+        _, w, h = tensor.shape
+        image = tensor_to_image_fn(tensor)
+        return CarWithMask(w, h, car_image_frame=image)
+
+    @property
+    def mask(self) -> BinaryMask:
+        return self.mask_random if self.mask_random is not None else self.car_mask
+
+    @property
+    def mask_path(self) -> Optional[Path]:
+        if self.car_image_path:
+            md5 = get_md5(self.car_image_path)
+            # TODO: add height and width to this
+            # TODO: put in ~/.cache/ instead
+            return Path("/tmp") / Path(f"car_mask_{md5}.npy")
+
+    @property
+    def car_mask(self) -> BinaryMask:
+        path = self.mask_path
+        if path is not None and path.exists():
+            return np.load(open(path, "rb"), allow_pickle=True)
+        mask = get_mask(image=self.car_image)
+        if mask is None:
+            mask = np.zeros((self.width, self.height), dtype=bool)
+        if path:
+            path.parent.mkdir(exist_ok=True)
+            np.save(open(path, "wb"), mask)
+        return mask
+
+    @property
+    def car_image(self) -> PILImage:
+        return (
+            self.car_image_frame
+            if self.car_image_frame is not None
+            else self._get_image_from_path()
+        )
+
+    def _get_image_from_path(self) -> PILImage:
+        img = Image.open(self.car_image_path)
+        return img.resize((self.width, self.height))
+
+
+@dataclass
+class CarTensorDataBatch:
     car: torch.Tensor
     pose: torch.Tensor
     background: Optional[torch.Tensor] = None
 
     @classmethod
-    def from_batch(cls, batch: List[CarTensorData]) -> "CarTensorDataBatch":
+    def collate_fn(cls, batch: List[CarTensorData]) -> "CarTensorDataBatch":
         return cls(
             car=cls._get(batch, "car"),
             pose=cls._get(batch, "pose"),
@@ -66,3 +131,6 @@ class CarTensorDataBatch(NamedTuple):
     @property
     def has_background(self) -> bool:
         return self.background is not None
+
+    def __len__(self) -> int:
+        return len(self.car)

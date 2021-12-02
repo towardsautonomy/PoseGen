@@ -7,8 +7,14 @@ import torch.nn.functional as F
 from torchmetrics.utilities.data import dim_zero_cat
 from torchmetrics import CosineSimilarity, FID, IS, KID
 
-from .datatypes import BinaryMask, CarTensorData, CarTensorDataBatch, PILImage
-from .datasets.dataset import CarWithMask
+from .datatypes import (
+    BinaryMask,
+    CarTensorData,
+    CarTensorDataBatch,
+    CarWithMask,
+    PILImage,
+)
+from .utils import binarize_pose
 
 
 @dataclass(frozen=True)
@@ -47,15 +53,11 @@ class IoU:
         return num / den if den > 0 else 0
 
     def _compute_one(self, real: CarTensorData, fake: torch.Tensor) -> float:
-        # TODO: all three channels the same?
-        pose = real.pose.cpu().numpy()[0]
-        # since masks are {0,1}^{w x h} the dataset mean is > 0
-        # and the 1 and 0 values will be mapped to > 0 and < 0
-        pose_binary = pose > 0
-        fake = self.tensor_to_image_fn(fake)
-        w, h = pose.shape
-        car = CarWithMask(w, h, car_image_frame=fake)
-        return self.iou(car.car_mask, pose_binary)
+        # all three channels the same? looks like it
+        real_pose = real.pose.cpu().numpy()[0]
+        real_pose_binary = binarize_pose(real_pose)
+        fake = CarWithMask.from_tensor(fake, self.tensor_to_image_fn)
+        return self.iou(fake.car_mask, real_pose_binary)
 
 
 class FIDBetter(FID):
@@ -71,6 +73,7 @@ class MetricCalculator:
     tensor_to_image_fn: Callable[[torch.Tensor], PILImage]
 
     def __post_init__(self):
+        # TODO: what is this magic 32?
         self.fid_obj = FIDBetter().to(self.device)
         self.is_obj = IS().to(self.device)
         self.kid_obj = KID(subset_size=32).to(self.device)

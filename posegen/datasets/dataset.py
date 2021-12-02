@@ -1,7 +1,7 @@
 import functools
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Callable, List, Sequence, Tuple
 from torch.utils.data import DataLoader
 
 import mmh3
@@ -13,58 +13,22 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
 from .utils import get_md5, DeNormalize
-from ..datatypes import BinaryMask, CarTensorData, CarTensorDataBatch, PILImage, Split
-from ..instance_segmentation import get_mask
-
-
-@dataclass(frozen=True)
-class CarWithMask:
-    width: int
-    height: int
-    car_image_path: Path = None
-    car_image_frame: PILImage = None
-    mask_random: Optional[BinaryMask] = None
-    category_idx: Optional[int] = None
-
-    @property
-    def mask(self) -> BinaryMask:
-        return self.mask_random if self.mask_random is not None else self.car_mask
-
-    @property
-    def mask_path(self) -> Optional[Path]:
-        if self.car_image_path:
-            md5 = get_md5(self.car_image_path)
-            # TODO: add height and width to this
-            return Path("/tmp") / Path(f"car_mask_{md5}.npy")
-
-    @property
-    def car_mask(self) -> BinaryMask:
-        path = self.mask_path
-        if path is not None and path.exists():
-            return np.load(open(path, "rb"), allow_pickle=True)
-        mask = get_mask(image=self.car_image)
-        if mask is None:
-            mask = np.zeros((self.width, self.height), dtype=bool)
-        if path:
-            path.parent.mkdir(exist_ok=True)
-            np.save(open(path, "wb"), mask)
-        return mask
-
-    @property
-    def car_image(self) -> PILImage:
-        return (
-            self.car_image_frame
-            if self.car_image_frame is not None
-            else self._get_image_from_path()
-        )
-
-    def _get_image_from_path(self) -> PILImage:
-        img = Image.open(self.car_image_path)
-        return img.resize((self.width, self.height))
+from ..datatypes import (
+    BinaryMask,
+    CarTensorData,
+    CarWithMask,
+    CarTensorDataBatch,
+    PILImage,
+    Split,
+)
 
 
 @dataclass(frozen=False)
 class CarDataset(Dataset):
+    """
+    TODO: generalize this to ObjectDataset
+    """
+
     path: str
     random_pose: bool
     n_pose_pairs: int
@@ -91,17 +55,17 @@ class CarDataset(Dataset):
         )
         # remove any images without a mask from the set
         self._cars = [car for car in self._cars if car.car_mask.sum() > 0]
-        self._data = (
+        self.data = (
             self._construct_random_poses(self._cars, self.n_pose_pairs)
             if self.random_pose
             else self._cars
         )
 
     def __len__(self):
-        return len(self._data)
+        return len(self.data)
 
     def __getitem__(self, idx: int) -> CarTensorData:
-        item = self._data[idx]
+        item = self.data[idx]
         car = self.transform_fn_cars(item.car_image)
         mask_rgb = self._mask_to_rgb(item.mask)
         pose = self.transform_fn_poses(mask_rgb)
@@ -117,7 +81,7 @@ class CarDataset(Dataset):
             batch_size=batch_size,
             shuffle=shuffle,
             num_workers=num_workers,
-            collate_fn=CarTensorDataBatch.from_batch,
+            collate_fn=CarTensorDataBatch.collate_fn,
         )
 
     @staticmethod
@@ -154,7 +118,7 @@ class CarDataset(Dataset):
 
     def _construct_random_poses(
         self, cars: Sequence[CarWithMask], n_pose_pairs: int
-    ) -> Sequence[CarWithMask]:
+    ) -> List[CarWithMask]:
         # for each car randomly pair it with `n_pose_pairs` pose masks selected from the same set.
         random_poses = self._np_rand_state.choice(cars, len(cars) * n_pose_pairs)
         return [
