@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
 from .utils import get_md5, DeNormalize
-from ..datatypes import BinaryMask, CarTensorData, PILImage, Split
+from ..datatypes import BinaryMask, CarTensorData, CarTensorDataBatch, PILImage, Split
 from ..instance_segmentation import get_mask
 
 
@@ -113,7 +113,11 @@ class CarDataset(Dataset):
         if shuffle and self.split != Split.train:
             raise ValueError("don't shuffle datasets other than train")
         return DataLoader(
-            self, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+            self,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers,
+            collate_fn=CarTensorDataBatch.from_batch,
         )
 
     @staticmethod

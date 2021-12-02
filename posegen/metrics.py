@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torchmetrics.utilities.data import dim_zero_cat
 from torchmetrics import CosineSimilarity, FID, IS, KID
 
-from .datatypes import BinaryMask, CarTensorData, PILImage
+from .datatypes import BinaryMask, CarTensorDataBatch, PILImage
 from .datasets.dataset import CarWithMask
 
 
@@ -23,10 +23,10 @@ class Metrics:
 @dataclass(frozen=False)
 class IoU:
     tensor_to_image_fn: Callable[[torch.Tensor], PILImage]
-    reals: List[CarTensorData] = field(default_factory=list)
+    reals: List[CarTensorDataBatch] = field(default_factory=list)
     fakes: List[torch.Tensor] = field(default_factory=list)
 
-    def update(self, real: CarTensorData, fake_car: torch.Tensor) -> None:
+    def update(self, real: CarTensorDataBatch, fake_car: torch.Tensor) -> None:
         if len(real.car) != len(fake_car):
             raise ValueError("unequal number of real and fake images")
         self.reals.append(real)
@@ -46,7 +46,7 @@ class IoU:
         den = (m1 | m2).sum()
         return num / den if den > 0 else 0
 
-    def _compute_one(self, real: CarTensorData, fake: torch.Tensor) -> float:
+    def _compute_one(self, real: CarTensorDataBatch, fake: torch.Tensor) -> float:
         # TODO: all three channels the same?
         pose = real.pose.cpu().numpy()[0]
         # since masks are {0,1}^{w x h} the dataset mean is > 0
@@ -76,7 +76,7 @@ class MetricCalculator:
         self.kid_obj = KID(subset_size=32).to(self.device)
         self.iou_obj = IoU(self.tensor_to_image_fn)
 
-    def update(self, real: CarTensorData, fake_car: torch.Tensor) -> None:
+    def update(self, real: CarTensorDataBatch, fake_car: torch.Tensor) -> None:
         reals_inception = self.prepare_data_for_inception(real.car, self.device)
         fakes_inception = self.prepare_data_for_inception(fake_car, self.device)
         self.is_obj.update(fakes_inception)

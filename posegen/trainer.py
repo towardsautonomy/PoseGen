@@ -8,7 +8,7 @@ import torch.utils.tensorboard as tbx
 import torchvision.utils as vutils
 import wandb
 
-from .datatypes import CarTensorData
+from .datatypes import CarTensorDataBatch
 from .datasets import CarDataset
 from .metrics import MetricCalculator
 
@@ -51,7 +51,7 @@ def hinge_loss_d(real_preds, fake_preds):
 def compute_loss_g(
     net_g,
     net_d,
-    real: CarTensorData,
+    real: CarTensorDataBatch,
     loss_func_g,
     lambda_g=1.0,
     lambda_mse=2.5,
@@ -81,7 +81,7 @@ def compute_loss_g(
     return loss_g, fakes, fake_preds
 
 
-def compute_loss_d(net_g, net_d, real: CarTensorData, loss_func_d):
+def compute_loss_d(net_g, net_d, real: CarTensorDataBatch, loss_func_d):
     r"""
     General implementation to compute discriminator loss.
     """
@@ -298,7 +298,7 @@ class Trainer:
         self.logger.add_image("fake", fake_samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, real: CarTensorData):
+    def _train_step_g(self, real: CarTensorDataBatch):
         r"""
         Performs a generator training step.
         """
@@ -315,7 +315,7 @@ class Trainer:
             )[0],
         )
 
-    def _train_step_d(self, real: CarTensorData):
+    def _train_step_d(self, real: CarTensorDataBatch):
         r"""
         Performs a discriminator training step.
         """

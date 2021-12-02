@@ -8,7 +8,7 @@ import torch
 
 from . import config
 from .datasets import CarDataset
-from .datatypes import CarTensorData, PILImage, Split
+from .datatypes import CarTensorDataBatch, PILImage, Split
 from .metrics import MetricCalculator, Metrics
 from .datasets import tesla
 from .utils import get_device
@@ -29,7 +29,7 @@ class Baseline:
     def device(self) -> torch.device:
         return get_device()
 
-    def _get_fakes(self, real: CarTensorData) -> torch.Tensor:
+    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
         raise NotImplementedError
 
     def compute(self) -> Metrics:
@@ -49,7 +49,7 @@ class Baseline1(Baseline):
         np_array = self.random_state.rand(w, h, 3) * 255
         return Image.fromarray(np_array.astype("uint8")).convert("RGB")
 
-    def _get_fakes(self, real: CarTensorData) -> torch.Tensor:
+    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
         """
         Random RGBs.
         """
@@ -63,7 +63,7 @@ class Baseline1(Baseline):
 
 
 class Baseline2(Baseline):
-    def _get_fakes(self, real: CarTensorData) -> torch.Tensor:
+    def _get_fakes(self, real: CarTensorDataBatch) -> torch.Tensor:
         """
         Random image from train.
         """

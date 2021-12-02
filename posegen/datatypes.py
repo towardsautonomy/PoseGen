@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, NamedTuple
+from typing import List, Optional, NamedTuple
 
 import numpy as np
 import torch
@@ -27,9 +27,24 @@ class CarTensorData(NamedTuple):
     pose: torch.Tensor
     background: Optional[torch.Tensor] = None
 
-    @property
-    def has_background(self) -> bool:
-        return self.background is not None
+
+class CarTensorDataBatch(NamedTuple):
+    car: torch.Tensor
+    pose: torch.Tensor
+    background: Optional[torch.Tensor] = None
+
+    @classmethod
+    def from_batch(cls, batch: List[CarTensorData]) -> "CarTensorDataBatch":
+        return cls(
+            car=cls._get(batch, "car"),
+            pose=cls._get(batch, "pose"),
+            background=cls._get(batch, "background"),
+        )
+
+    @staticmethod
+    def _get(batch: List[CarTensorData], name: str) -> Optional[torch.Tensor]:
+        values = [getattr(item, name) for item in batch]
+        return torch.stack(values) if values[0] is not None else None
 
     def get_idx(self, idx: int) -> "CarTensorData":
         """
@@ -47,3 +62,7 @@ class CarTensorData(NamedTuple):
             pose=self.pose.to(device),
             background=self.background.to(device) if self.has_background else None,
         )
+
+    @property
+    def has_background(self) -> bool:
+        return self.background is not None
