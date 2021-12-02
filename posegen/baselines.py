@@ -28,7 +28,6 @@ class Baseline:
     batch_size: int
     num_workers: int
     seed: int
-    tensor_to_pil_fn_provided: Optional[TensorToPILFn] = None
 
     def __post_init__(self):
         self.random_state = np.random.RandomState(seed=self.seed)
@@ -39,7 +38,7 @@ class Baseline:
 
     @property
     def tensor_to_pil_fn(self) -> TensorToPILFn:
-        return self.tensor_to_pil_fn_provided or self.ds.transform_reverse_fn_cars
+        return self.ds.transform_reverse_fn_cars
 
     def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
         raise NotImplementedError
@@ -113,20 +112,22 @@ class Baseline3(Baseline):
 @dataclass
 class FromDisk(Baseline):
     path: str
-    mean: Tuple[float, ...]
-    std: Tuple[float, ...]
+    tensor_to_pil_fn_provided: Optional[TensorToPILFn]
+
+    @property
+    def tensor_to_pil_fn(self) -> TensorToPILFn:
+        return self.tensor_to_pil_fn_provided
 
     def _get_one_fake(self, idx: int, batch_idx: int) -> torch.Tensor:
-        # TODO: incorporate mean and std
         data_on_disk = np.load(self.path, allow_pickle=True).item()
         idx_ds = batch_idx * self.batch_size + idx
         data_path = self.ds.data[idx_ds].car_image_path
         loc, name = str(data_path).split("/")[-2:]
         key_to_find = f"tesla-model-3-midnight-silver/{loc}/image/{name}"
         if key_to_find in data_on_disk:
+            print(f"found {key_to_find}")
             return torch.tensor(data_on_disk[key_to_find])
         else:
-            print(f"could not find {key_to_find}")
             return torch.rand(3, 256, 256)
 
     def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
