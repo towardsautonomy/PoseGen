@@ -1,5 +1,3 @@
-import hashlib
-from pathlib import Path
 from typing import Tuple
 
 import torch
@@ -7,10 +5,6 @@ import torchvision
 from torchvision.transforms import transforms
 
 from ..datatypes import TensorToPILFn
-
-
-def get_md5(path: Path) -> str:
-    return hashlib.md5(open(path, "rb").read()).hexdigest()
 
 
 class DeNormalize(torchvision.transforms.Normalize):

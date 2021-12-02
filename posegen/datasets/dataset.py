@@ -11,7 +11,6 @@ from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
-from .utils import get_md5, DeNormalize
 from ..datatypes import (
     BinaryMask,
     CarTensorData,
@@ -22,6 +21,8 @@ from ..datatypes import (
     PILToTensorFn,
     TensorToPILFn,
 )
+from .utils import DeNormalize
+from ..utils import get_md5
 
 
 @dataclass
