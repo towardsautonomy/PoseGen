@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from PIL import Image
 
-from .instance_segmentation import get_mask
 from .datasets.utils import get_md5
 
 
@@ -68,6 +67,8 @@ class CarWithMask:
 
     @property
     def car_mask(self) -> BinaryMask:
+        from .instance_segmentation import get_mask
+
         path = self.mask_path
         if path is not None and path.exists():
             return np.load(open(path, "rb"), allow_pickle=True)
