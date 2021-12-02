@@ -85,7 +85,9 @@ class Baseline2(Baseline):
 class Baseline3(Baseline):
     @property
     def train_masks(self) -> Dict[int, BinaryMask]:
-        return {idx: self.ds_train.data[idx].car_mask for idx in range(len(self.ds_train))}
+        return {
+            idx: self.ds_train.data[idx].car_mask for idx in range(len(self.ds_train))
+        }
 
     def _get_one_fake(self, real: CarTensorData) -> torch.Tensor:
         data = CarWithMask.from_tensor(
