@@ -89,7 +89,7 @@ class MetricCalculator:
     def compute(self) -> Metrics:
         return Metrics(
             inception_score=self.is_obj.compute()[0].item(),
-            fid=self.fid_obj.compute()[0].item(),
+            fid=self.fid_obj.compute().item(),
             kid=self.kid_obj.compute()[0].item(),
             iou=self.iou_obj.compute(),
             inception_sim=self.fid_obj.sim(),
