@@ -59,7 +59,7 @@ def parse_args():
         help=(
             "Variant of experiment to run"
         ),
-        choices=['unconditional', 'pose_conditioned', 'pose_appearance_conditioned', 'pose_appearance_bgnd_conditioned']
+        choices=['unconditional', 'autoencoder', 'pose_conditioned', 'pose_appearance_conditioned', 'pose_appearance_bgnd_conditioned']
     )
     parser.add_argument(
         "--resume",
@@ -157,6 +157,7 @@ def train(args):
     # net_g = PoseGen_Generator()
     net_g = PoseGen(nz=nz, 
                     unconditional=(args.variant == 'unconditional'),
+                    autoencoder=(args.variant == 'autoencoder'),
                     appearance_input=(args.variant == 'pose_appearance_conditioned'),
                     bgnd_input=(args.variant == 'pose_appearance_bgnd_conditioned')
                   )
@@ -199,6 +200,7 @@ def train(args):
         log_dir,
         ckpt_dir,
         unconditional=(args.variant == 'unconditional'),
+        autoencoder=(args.variant == 'autoencoder'),
         device=torch.device(args.device),
     )
 

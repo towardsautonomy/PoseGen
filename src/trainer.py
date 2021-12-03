@@ -114,7 +114,7 @@ def train_step(net, opt, sch, compute_loss):
     return loss
 
 
-def evaluate(net_g, net_d, dataloader, device, train=False, unconditional=False):
+def evaluate(net_g, net_d, dataloader, device, train=False, unconditional=False, pretrain=False):
     r"""
     Evaluates model and logs metrics.
     Attributes:
@@ -164,6 +164,7 @@ def evaluate(net_g, net_d, dataloader, device, train=False, unconditional=False)
                 real_sil,
                 hinge_loss_g,
                 unconditional=unconditional,
+                pretrain=pretrain,
             )
 
             # Update metrics
@@ -237,6 +238,7 @@ class Trainer:
         log_dir,
         ckpt_dir,
         unconditional,
+        autoencoder,
         device,
     ):
         # Setup models, dataloader, optimizers
@@ -249,6 +251,7 @@ class Trainer:
         self.train_dataloader = train_dataloader
         self.eval_dataloader = eval_dataloader
         self.unconditional = unconditional
+        self.autoencoder = autoencoder
 
         # Setup training parameters
         self.device = device
@@ -279,16 +282,24 @@ class Trainer:
         self.sch_d.load_state_dict(state_dict["sch_d"])
         self.step = state_dict["step"]
 
-    def _load_checkpoint(self):
+    def _load_checkpoint(self, step=None):
         r"""
         Finds the last checkpoint in ckpt_dir and load states.
         """
 
-        ckpt_paths = [f for f in os.listdir(self.ckpt_dir) if f.endswith(".pth")]
-        if ckpt_paths:  # Train from scratch if no checkpoints were found
-            ckpt_path = sorted(ckpt_paths, key=lambda f: int(f[:-4]))[-1]
-            ckpt_path = os.path.join(self.ckpt_dir, ckpt_path)
+        # load the checkpoint from a given step if specified
+        if step is not None:
+            ckpt_path = os.path.join(self.ckpt_dir, f"{step}.pth")
+            if not os.path.exists(ckpt_path):
+                raise FileNotFoundError(f"Checkpoint {step} not found.")
             self._load_state_dict(torch.load(ckpt_path))
+        else:
+            # Find last checkpoint
+            ckpt_paths = [f for f in os.listdir(self.ckpt_dir) if f.endswith(".pth")]
+            if ckpt_paths:  # Train from scratch if no checkpoints were found
+                ckpt_path = sorted(ckpt_paths, key=lambda f: int(f[:-4]))[-1]
+                ckpt_path = os.path.join(self.ckpt_dir, ckpt_path)
+                self._load_state_dict(torch.load(ckpt_path))
 
     def _save_checkpoint(self):
         r"""
@@ -328,6 +339,7 @@ class Trainer:
                 real_sil,
                 hinge_loss_g,
                 unconditional=self.unconditional,
+                pretrain=self.autoencoder,
             )[0],
         )
 
@@ -386,7 +398,8 @@ class Trainer:
                             self.eval_dataloader,
                             self.device,
                             train=True,
-                            unconditional=self.unconditional
+                            unconditional=self.unconditional,
+                            pretrain=self.autoencoder,
                         )
                     )
 

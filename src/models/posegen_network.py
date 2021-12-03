@@ -179,11 +179,13 @@ class PoseGen(nn.Module):
                        nz: int=128, 
                        bottom_width: int=4, 
                        skip_connections: bool=False, 
-                       unconditional: bool=True,
+                       unconditional: bool=False,
+                       autoencoder: bool=False,
                        appearance_input: bool=False,
                        bgnd_input: bool=False):
         super().__init__()
         self.unconditional = unconditional
+        self.autoencoder = autoencoder
         self.appearance_input = appearance_input
         self.bgnd_input = bgnd_input
         self.nz = nz
@@ -204,6 +206,9 @@ class PoseGen(nn.Module):
             hidden_features = []
             self.skip_connections = False
             self.appearance_input = False
+            self.bgnd_input = False
+        elif self.autoencoder:
+            z, hidden_features = self.obj_appear_enc(x_obj)
             self.bgnd_input = False
         else:
             if self.appearance_input:
