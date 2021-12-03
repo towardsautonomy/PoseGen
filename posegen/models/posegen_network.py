@@ -1,4 +1,15 @@
-from module import *
+from typing import Optional, List, Tuple
+
+import torch
+from torch import nn
+
+
+from module import (
+    DBlock,
+    DBlockOptimized,
+    GBlock,
+    SNLinear,
+)
 
 from ..datatypes import CarTensorDataBatch
 
@@ -194,41 +205,69 @@ class Decoder(nn.Module):
 class PoseGen(nn.Module):
     def __init__(
         self,
-        ndf=1024,
+        ndf: int = 1024,
         ngf: int = 512,
         nz: int = 128,
         bottom_width: int = 4,
-        skip_connections: bool = True,
-        n_encoders: int = 3,
+        skip_connections: bool = False,
+        unconditional: bool = True,
+        appearance_input: bool = False,
+        bgnd_input: bool = False,
     ):
         super().__init__()
+        self.unconditional = unconditional
+        self.appearance_input = appearance_input
+        self.bgnd_input = bgnd_input
+        self.skip_connections = skip_connections
+        self.nz = nz
+
         # object appearance encoder
         self.obj_appear_enc = Encoder(ndf, nz)
         # background encoder
         self.background_enc = Encoder(ndf, nz)
         # pose encoder
         self.pose_enc = Encoder(ndf, nz)
+        # number of encoders
+        self.n_encoders = 1 + int(self.appearance_input) + int(self.bgnd_input)
         self.dec = Decoder(
             nz,
             ngf,
             bottom_width,
             skip_connections=skip_connections,
-            n_encoders=n_encoders,
+            n_encoders=self.n_encoders,
         )
 
+    @staticmethod
+    def _sum_lists(*xs: Optional[List[torch.Tensor]]) -> List[torch.Tensor]:
+        return [sum((h for h in hs if h is not None), []) for hs in zip(xs)]
+
+    @staticmethod
+    def _cat(*xs: Optional[torch.Tensor]) -> torch.Tensor:
+        return torch.cat([x for x in xs if x is not None], dim=1)
+
+    @staticmethod
+    def _apply_encoder(
+        cond: bool, enc: Encoder, data: torch.Tensor
+    ) -> Tuple[Optional[torch.Tensor], Optional[List[torch.Tensor]]]:
+        return enc(data) if cond else None, None
+
     def forward(self, data: CarTensorDataBatch):
-        z_appear, appear_hidden_features = self.obj_appear_enc(data.car)
-        z_bgnd, bgnd_hidden_features = self.background_enc(data.background)
-        z_pose, pose_hidden_features = self.pose_enc(data.pose)
-        # concatenate latent vectors
-        z = torch.cat((z_appear, z_bgnd, z_pose), dim=1)
-        # hidden features
-        hidden_features = [
-            a + b + c
-            for a, b, c in zip(
-                appear_hidden_features, bgnd_hidden_features, pose_hidden_features
+        if self.unconditional:
+            z = torch.randn(len(data.car), self.nz, device=data.car.device)
+            hidden_features = []
+            self.skip_connections = False
+            self.appearance_input = False
+            self.bgnd_input = False
+        else:
+            z_pose, pose_hidden_features = self.pose_enc(data.pose)
+            z_appear, appear_hidden_features = self._apply_encoder(
+                self.appearance_input, self.obj_appear_enc, data.car
             )
-        ]
-        # reconstruct
-        out = self.dec(z, bgnd_hidden_features)
-        return out
+            z_bgnd, bgnd_hidden_features = self._apply_encoder(
+                self.bgnd_input, self.background_enc, data.background
+            )
+            hidden_features = self._sum_lists(
+                pose_hidden_features, appear_hidden_features, bgnd_hidden_features
+            )
+            z = self._cat(z_pose, z_appear, z_bgnd)
+        return self.dec(z, hidden_features)

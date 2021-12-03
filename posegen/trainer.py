@@ -72,7 +72,7 @@ def compute_loss_g(
     else:
         inverted_sil = 1.0 - ((real.pose / 2.0) + 0.5)
         # reconstruction loss
-        masked_bgnd = real_bgnd * inverted_sil
+        # masked_bgnd = real_bgnd * inverted_sil
         masked_gen = fakes * inverted_sil
         loss_rec = lambda_mse * torch.mean(
             inverted_sil * torch.nn.MSELoss(reduction="none")(masked_bgnd, masked_gen)
@@ -183,11 +183,7 @@ def evaluate(
                 fake_samples, nrow=8, padding=4, normalize=True
             )
 
-    return (
-        metrics
-        if not train
-        else (metrics, true_samples, bgnd_samples, pose_samples, fake_samples)
-    )
+    return metrics if not train else (metrics, true_samples, pose_samples, fake_samples)
 
 
 class Trainer:
@@ -285,7 +281,7 @@ class Trainer:
         ckpt_path = os.path.join(self.ckpt_dir, f"{self.step}.pth")
         torch.save(self._state_dict(), ckpt_path)
 
-    def _log(self, metrics, true_samples, bgnd_samples, sil_samples, fake_samples):
+    def _log(self, metrics, true_samples, sil_samples, fake_samples):
         r"""
         Logs metrics and samples to Tensorboard.
         """
@@ -293,7 +289,7 @@ class Trainer:
         for k, v in metrics.items():
             self.logger.add_scalar(k, v, self.step)
         self.logger.add_image("real/object", true_samples, self.step)
-        self.logger.add_image("real/background", bgnd_samples, self.step)
+        # self.logger.add_image("real/background", bgnd_samples, self.step)
         self.logger.add_image("real/silhouette", sil_samples, self.step)
         self.logger.add_image("fake", fake_samples, self.step)
         self.logger.flush()
