@@ -120,11 +120,11 @@ class FromDisk(Baseline):
         return self.tensor_to_pil_fn_provided
 
     def _get_one_fake(self, idx: int, batch_idx: int) -> torch.Tensor:
-        data_on_disk = np.load(self.path, allow_pickle=True).item()
+        data_on_disk = np.load(self.path, allow_pickle=True)
         idx_ds = batch_idx * self.batch_size + idx
         data_path = self.ds.data[idx_ds].car_image_path
         loc, name = str(data_path).split("/")[-2:]
-        key_to_find = f"tesla-model-3-midnight-silver/{loc}/image/{name}"
+        key_to_find = f"{loc}/{name}"
         if key_to_find in data_on_disk:
             print(f"found {key_to_find}")
             return torch.tensor(data_on_disk[key_to_find])
