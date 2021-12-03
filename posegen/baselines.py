@@ -126,9 +126,9 @@ class FromDisk(Baseline):
         loc, name = str(data_path).split("/")[-2:]
         key_to_find = f"{loc}/{name}"
         if key_to_find in data_on_disk:
-            print(f"found {key_to_find}")
             return torch.tensor(data_on_disk[key_to_find])
         else:
+            print(f"missing {key_to_find}")
             return torch.rand(3, 256, 256)
 
     def _get_fakes(self, real: CarTensorDataBatch, batch_idx: int) -> torch.Tensor:
