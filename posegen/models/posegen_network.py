@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 
-from module import (
+from .module import (
     DBlock,
     DBlockOptimized,
     GBlock,
