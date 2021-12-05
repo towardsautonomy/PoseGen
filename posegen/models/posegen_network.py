@@ -211,31 +211,34 @@ class PoseGen(nn.Module):
         nz: int = 128,
         bottom_width: int = 4,
         skip_connections: bool = False,
-        unconditional: bool = True,
-        appearance_input: bool = False,
-        bgnd_input: bool = False,
+        condition_on_object: bool = True,
+        condition_on_pose: bool = True,
+        condition_on_background: bool = True,
+        # use_random_z_if_no_input: bool = False,  # TODO: add this
     ):
         super().__init__()
-        self.unconditional = unconditional
-        self.appearance_input = appearance_input
-        self.bgnd_input = bgnd_input
+        self.condition_on_object = condition_on_object
+        self.condition_on_pose = condition_on_pose
+        self.condition_on_background = condition_on_background
         self.skip_connections = skip_connections
         self.nz = nz
 
-        # object appearance encoder
-        self.obj_appear_enc = Encoder(ndf, nz)
-        # background encoder
-        self.background_enc = Encoder(ndf, nz)
-        # pose encoder
-        self.pose_enc = Encoder(ndf, nz)
+        self.enc_object = Encoder(ndf, nz)
+        self.enc_pose = Encoder(ndf, nz)
+        self.enc_background = Encoder(ndf, nz)
+
         # number of encoders
-        self.n_encoders = 1 + int(self.appearance_input) + int(self.bgnd_input)
+        self.n_encoders = (
+            int(self.condition_on_object)
+            + int(self.condition_on_pose)
+            + int(self.condition_on_background)
+        )
         self.dec = Decoder(
             nz,
             ngf,
             bottom_width,
             skip_connections=skip_connections,
-            n_encoders=self.n_encoders,
+            n_encoders=max(self.n_encoders, 1),
         )
 
     @staticmethod
@@ -254,17 +257,19 @@ class PoseGen(nn.Module):
         return enc(data) if cond else None, None
 
     def forward(self, data: CarTensorDataBatch):
-        if self.unconditional:
+        if self.n_encoders == 0:
             z = torch.randn(len(data.car), self.nz, device=data.car.device)
             h = []
         else:
-            z_pose, h_pose = self.pose_enc(data.pose)
-            z_appear, h_car = self._apply_encoder(
-                self.appearance_input, self.obj_appear_enc, data.car
+            z_o, h_o = self._apply_encoder(
+                self.condition_on_object, self.enc_object, data.car
             )
-            z_bgnd, h_background = self._apply_encoder(
-                self.bgnd_input, self.background_enc, data.background
+            z_p, h_p = self._apply_encoder(
+                self.condition_on_pose, self.enc_pose, data.pose
             )
-            h = self._sum_lists(h_pose, h_car, h_background)
-            z = self._cat(z_pose, z_appear, z_bgnd)
+            z_b, h_b = self._apply_encoder(
+                self.condition_on_background, self.enc_background, data.background
+            )
+            h = self._sum_lists(h_o, h_p, h_b)
+            z = self._cat(z_o, z_p, z_b)
         return self.dec(z, h)

@@ -5,26 +5,20 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 import torch.utils.tensorboard as tbx
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.data import DataLoader
 import torchvision.utils as vutils
 import wandb
 
 from .datatypes import CarTensorDataBatch
 from .datasets import CarDataset
 from .metrics import MetricCalculator
+from .models import Discriminator, PoseGen
+from .utils import binarize_pose
 
 
-def prepare_data_for_gan(x, nz, device):
-    r"""
-    Helper function to prepare inputs for model.
-    """
-
-    return (
-        x.to(device),
-        torch.randn((x.size(0), nz)).to(device),
-    )
-
-
-def compute_prob(logits):
+def compute_prob(logits: torch.Tensor) -> torch.Tensor:
     r"""
     Computes probability from model output.
     """
@@ -32,7 +26,7 @@ def compute_prob(logits):
     return torch.sigmoid(logits).mean()
 
 
-def hinge_loss_g(fake_preds):
+def hinge_loss_g(fake_preds: torch.Tensor) -> torch.Tensor:
     r"""
     Computes generator hinge loss.
     """
@@ -40,7 +34,7 @@ def hinge_loss_g(fake_preds):
     return -fake_preds.mean()
 
 
-def hinge_loss_d(real_preds, fake_preds):
+def hinge_loss_d(real_preds: torch.Tensor, fake_preds: torch.Tensor) -> torch.Tensor:
     r"""
     Computes discriminator hinge loss.
     """
@@ -49,39 +43,49 @@ def hinge_loss_d(real_preds, fake_preds):
 
 
 def compute_loss_g(
-    net_g,
-    net_d,
+    net_g: PoseGen,
+    net_d: Discriminator,
     real: CarTensorDataBatch,
     loss_func_g,
     lambda_g=1.0,
     lambda_mse=2.5,
     pretrain=False,
 ):
-    r"""
+    """
     General implementation to compute generator loss.
     """
     fakes = net_g(real)
     fake_preds = net_d(fakes).view(-1)
     loss_g = lambda_g * loss_func_g(fake_preds)
 
+    # different flavors of reconstruction losses
+    # these losses are additive and independent
+    # note that lambda_mse needs to be scaled outside of this function
+    # if more than one kind of MSE loss applies
+    mse = torch.nn.MSELoss(reduction="mean")
     if pretrain:
-        # reconstruction loss
-        loss_rec = lambda_mse * torch.nn.MSELoss(reduction="mean")(real.car, fakes)
-        loss_g += loss_rec
+        # full images reconstruction loss
+        loss_rec = mse(real.car, fakes)
+        loss_g += lambda_mse * loss_rec
 
-    else:
-        inverted_sil = 1.0 - ((real.pose / 2.0) + 0.5)
-        # reconstruction loss
-        # masked_bgnd = real_bgnd * inverted_sil
-        masked_gen = fakes * inverted_sil
-        loss_rec = lambda_mse * torch.mean(
-            inverted_sil * torch.nn.MSELoss(reduction="none")(masked_bgnd, masked_gen)
-        )
-        loss_g += loss_rec
+    if net_g.condition_on_pose:
+        # masked object reconstruction loss
+        pose_binary = binarize_pose(real.pose)
+        masked_fakes = fakes * pose_binary
+        masked_real = real.car * pose_binary
+        loss_rec = mse(masked_fakes, masked_real)
+        loss_g += lambda_mse * loss_rec
+
+        if net_g.condition_on_background:
+            # TODO
+            pass
+
     return loss_g, fakes, fake_preds
 
 
-def compute_loss_d(net_g, net_d, real: CarTensorDataBatch, loss_func_d):
+def compute_loss_d(
+    net_g: PoseGen, net_d: Discriminator, real: CarTensorDataBatch, loss_func_d
+):
     r"""
     General implementation to compute discriminator loss.
     """
@@ -104,22 +108,20 @@ def train_step(net, opt, sch, compute_loss):
     loss.backward()
     opt.step()
     sch.step()
-
     return loss
 
 
 def evaluate(
-    net_g, net_d, ds: CarDataset, dataloader, device, train=False, prefix: str = ""
+    net_g: PoseGen,
+    net_d: Discriminator,
+    ds: CarDataset,
+    dataloader,
+    device,
+    train=False,
+    prefix: str = "",
 ):
-    r"""
+    """
     Evaluates model and logs metrics.
-    Attributes:
-        net_g (Module): Torch generator model.
-        net_d (Module): Torch discriminator model.
-        dataloader (Dataloader): Torch evaluation set dataloader.
-        nz (int): Generator input / noise dimension.
-        device (Device): Torch device to perform evaluation on.
-        samples_z (Tensor): Noise tensor to generate samples.
     """
 
     net_g.to(device).eval()
@@ -132,8 +134,6 @@ def evaluate(
         metric_calculator = MetricCalculator(device, ds.transform_reverse_fn_cars)
 
         for real in tqdm(dataloader, desc="Evaluating Model"):
-            # Compute losses and save intermediate outputs
-            # reals, z = prepare_data_for_gan(data['image'], nz, device)
             real = real.to(device)
 
             loss_d, fakes, real_pred, fake_pred = compute_loss_d(
@@ -206,20 +206,20 @@ class Trainer:
 
     def __init__(
         self,
-        net_g,
-        net_d,
-        opt_g,
-        opt_d,
-        sch_g,
-        sch_d,
+        net_g: PoseGen,
+        net_d: Discriminator,
+        opt_g: Optimizer,
+        opt_d: Optimizer,
+        sch_g: LambdaLR,
+        sch_d: LambdaLR,
         ds_train: CarDataset,
-        train_dataloader,
-        eval_dataloader,
-        test_dataloader,
-        nz,
-        log_dir,
-        ckpt_dir,
-        device,
+        train_dataloader: DataLoader,
+        eval_dataloader: DataLoader,
+        test_dataloader: DataLoader,
+        nz: int,
+        log_dir: str,
+        ckpt_dir: str,
+        device: torch.device,
     ):
         # Setup models, dataloader, optimizers
         self.net_g = net_g.to(device)
@@ -263,7 +263,7 @@ class Trainer:
         self.step = state_dict["step"]
 
     def _load_checkpoint(self):
-        r"""
+        """
         Finds the last checkpoint in ckpt_dir and load states.
         """
 
@@ -274,14 +274,16 @@ class Trainer:
             self._load_state_dict(torch.load(ckpt_path))
 
     def _save_checkpoint(self):
-        r"""
+        """
         Saves model, optimizer and trainer states.
         """
 
         ckpt_path = os.path.join(self.ckpt_dir, f"{self.step}.pth")
         torch.save(self._state_dict(), ckpt_path)
 
-    def _log(self, metrics, true_samples, sil_samples, fake_samples):
+    def _log(
+        self, metrics: dict, true_samples: torch.Tensor, sil_samples, fake_samples
+    ):
         r"""
         Logs metrics and samples to Tensorboard.
         """
@@ -294,7 +296,7 @@ class Trainer:
         self.logger.add_image("fake", fake_samples, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, real: CarTensorDataBatch):
+    def _train_step_g(self, real: CarTensorDataBatch) -> None:
         r"""
         Performs a generator training step.
         """
@@ -311,7 +313,7 @@ class Trainer:
             )[0],
         )
 
-    def _train_step_d(self, real: CarTensorDataBatch):
+    def _train_step_d(self, real: CarTensorDataBatch) -> None:
         r"""
         Performs a discriminator training step.
         """
@@ -328,7 +330,9 @@ class Trainer:
             )[0],
         )
 
-    def train(self, max_steps, repeat_d, eval_every, ckpt_every):
+    def train(
+        self, max_steps: int, repeat_d: int, eval_every: int, ckpt_every: int
+    ) -> None:
         r"""
         Performs GAN training, checkpointing and logging.
         Attributes:

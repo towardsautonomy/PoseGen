@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 
 from posegen.datasets import CarDataset
-from posegen.models import PoseGen_Discriminator, PoseGen
+from posegen.models import PoseGenDiscriminator, PoseGen
 from posegen.trainer import Trainer
 
 
@@ -177,10 +177,8 @@ def train(
     # nz, lr, betas, eval_split, num_workers = (256, 2e-4, (0.0, 0.9), 0.1, 8)
 
     # Setup models
-    # net_g = PoseGen_Generator()
     net_g = PoseGen(nz=nz)
-    # net_d = StyleGAN2_Discriminator(c_dim=0, img_resolution=args.im_size, img_channels=3)
-    net_d = PoseGen_Discriminator()
+    net_d = PoseGenDiscriminator()
 
     # Configure optimizers
     opt_g = optim.Adam(net_g.parameters(), lr, betas)
@@ -194,6 +192,7 @@ def train(
         opt_d, lr_lambda=lambda s: 1.0 - (s / max_steps)
     )
 
+    # TODO: fix this and connect to `experiment.py`
     ds_train = CarDataset()
     ds_eval = ...
     ds_test = ...
