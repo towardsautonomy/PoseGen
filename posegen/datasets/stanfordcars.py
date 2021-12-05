@@ -5,14 +5,14 @@ from typing import Dict, Tuple
 import pandas as pd
 from scipy.io import loadmat
 
-from .dataset import CarDataset
+from .dataset import ObjectDataset
 from .. import config
 from ..datatypes import Split
 from ..utils import get_mmh3
 
 
 @dataclass
-class StanfordCars(CarDataset):
+class StanfordCars(ObjectDataset):
     path_meta: str
     path_train: str
     path_test: str
@@ -81,8 +81,8 @@ class StanfordCars(CarDataset):
 
 
 def get_stanford_cars_dataset(
-    random_pose: bool,
     split: Split,
+    random_pose: bool = False,
     path: str = config.stanford_cars_path_base,
     path_meta: str = config.stanford_cars_path_meta,
     path_train: str = config.stanford_cars_path_train,
@@ -111,8 +111,8 @@ def get_stanford_cars_dataset(
         extension=extension,
         width=width,
         height=height,
-        transforms_mean_cars=transforms_mean_cars,
-        transforms_std_cars=transforms_std_cars,
+        transforms_mean_objects=transforms_mean_cars,
+        transforms_std_objects=transforms_std_cars,
         transforms_mean_poses=transforms_mean_poses,
         transforms_std_poses=transforms_std_poses,
     )

@@ -1,4 +1,3 @@
-import functools
 from typing import Optional, List, Tuple
 
 import torch
@@ -12,7 +11,7 @@ from module import (
     SNLinear,
 )
 
-from ..datatypes import CarTensorDataBatch
+from ..datatypes import ObjectTensorDataBatch
 
 
 class Generator(nn.Module):
@@ -65,7 +64,7 @@ class Discriminator(nn.Module):
         ndf (int): Variable controlling discriminator feature map sizes.
     """
 
-    def __init__(self, ndf=1024):
+    def __init__(self, ndf: int):
         super().__init__()
 
         self.block1 = DBlockOptimized(3, ndf >> 6)
@@ -206,14 +205,14 @@ class Decoder(nn.Module):
 class PoseGen(nn.Module):
     def __init__(
         self,
-        ndf: int = 1024,
-        ngf: int = 512,
-        nz: int = 128,
-        bottom_width: int = 4,
-        skip_connections: bool = False,
-        condition_on_object: bool = True,
-        condition_on_pose: bool = True,
-        condition_on_background: bool = True,
+        ndf: int,
+        ngf: int,
+        nz: int,
+        bottom_width: int,
+        skip_connections: bool,
+        condition_on_object: bool,
+        condition_on_pose: bool,
+        condition_on_background: bool,
         # use_random_z_if_no_input: bool = False,  # TODO: add this
     ):
         super().__init__()
@@ -256,13 +255,13 @@ class PoseGen(nn.Module):
     ) -> Tuple[Optional[torch.Tensor], Optional[List[torch.Tensor]]]:
         return enc(data) if cond else None, None
 
-    def forward(self, data: CarTensorDataBatch):
+    def forward(self, data: ObjectTensorDataBatch):
         if self.n_encoders == 0:
-            z = torch.randn(len(data.car), self.nz, device=data.car.device)
+            z = torch.randn(len(data.object), self.nz, device=data.object.device)
             h = []
         else:
             z_o, h_o = self._apply_encoder(
-                self.condition_on_object, self.enc_object, data.car
+                self.condition_on_object, self.enc_object, data.object
             )
             z_p, h_p = self._apply_encoder(
                 self.condition_on_pose, self.enc_pose, data.pose

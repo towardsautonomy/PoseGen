@@ -1,21 +1,31 @@
+from dataclasses import dataclass
 import functools
 import os
+from pathlib import Path
+from typing import Callable, Dict, Tuple, Union
 
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 import torch.utils.tensorboard as tbx
+from torch import optim
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 import torchvision.utils as vutils
 import wandb
 
-from .datatypes import CarTensorDataBatch
-from .datasets import CarDataset
+from . import datasets
+from .datatypes import Lambdas, ObjectTensorDataBatch, Split
+from .datasets import ObjectDataset
+from .experiments import Config, ConfigCommon
 from .metrics import MetricCalculator
 from .models import Discriminator, PoseGen
-from .utils import binarize_pose
+from .utils import binarize_pose, get_device
+
+
+LossGeneratorFn = Callable[[torch.Tensor], torch.Tensor]
+LossDiscriminatorFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
 
 def compute_prob(logits: torch.Tensor) -> torch.Tensor:
@@ -45,18 +55,18 @@ def hinge_loss_d(real_preds: torch.Tensor, fake_preds: torch.Tensor) -> torch.Te
 def compute_loss_g(
     net_g: PoseGen,
     net_d: Discriminator,
-    real: CarTensorDataBatch,
-    loss_func_g,
-    lambda_g=1.0,
-    lambda_mse=2.5,
-    pretrain=False,
-):
+    real: ObjectTensorDataBatch,
+    loss_func_g: LossGeneratorFn,
+    lambdas: Lambdas,
+    pretrain: bool,
+) -> Tuple[torch.Tensor, ...]:
     """
     General implementation to compute generator loss.
+    TODO: add L_background
     """
     fakes = net_g(real)
     fake_preds = net_d(fakes).view(-1)
-    loss_g = lambda_g * loss_func_g(fake_preds)
+    loss_g = lambdas.gan * loss_func_g(fake_preds)
 
     # different flavors of reconstruction losses
     # these losses are additive and independent
@@ -65,39 +75,39 @@ def compute_loss_g(
     mse = torch.nn.MSELoss(reduction="mean")
     if pretrain:
         # full images reconstruction loss
-        loss_rec = mse(real.car, fakes)
-        loss_g += lambda_mse * loss_rec
+        loss_g += lambdas.full * mse(real.object, fakes)
 
     if net_g.condition_on_pose:
         # masked object reconstruction loss
         pose_binary = binarize_pose(real.pose)
-        masked_fakes = fakes * pose_binary
-        masked_real = real.car * pose_binary
-        loss_rec = mse(masked_fakes, masked_real)
-        loss_g += lambda_mse * loss_rec
-
-        if net_g.condition_on_background:
-            # TODO
-            pass
+        if lambdas.obj > 0:
+            masked_fakes = fakes * pose_binary
+            masked_real = real.object * pose_binary
+            loss_g += lambdas.obj * mse(masked_fakes, masked_real)
 
     return loss_g, fakes, fake_preds
 
 
 def compute_loss_d(
-    net_g: PoseGen, net_d: Discriminator, real: CarTensorDataBatch, loss_func_d
-):
+    net_g: PoseGen,
+    net_d: Discriminator,
+    real: ObjectTensorDataBatch,
+    loss_func_d: LossDiscriminatorFn,
+) -> Tuple[torch.Tensor, ...]:
     r"""
     General implementation to compute discriminator loss.
     """
 
-    real_preds = net_d(real.car).view(-1)
+    real_preds = net_d(real.object).view(-1)
     fakes = net_g(real).detach()
     fake_preds = net_d(fakes).view(-1)
     loss_d = loss_func_d(real_preds, fake_preds)
     return loss_d, fakes, real_preds, fake_preds
 
 
-def train_step(net, opt, sch, compute_loss):
+def train_step(
+    net: Union[PoseGen, Discriminator], opt: Optimizer, sch: LambdaLR, compute_loss
+):
     r"""
     General implementation to perform a training step.
     """
@@ -114,12 +124,13 @@ def train_step(net, opt, sch, compute_loss):
 def evaluate(
     net_g: PoseGen,
     net_d: Discriminator,
-    ds: CarDataset,
-    dataloader,
-    device,
-    train=False,
-    prefix: str = "",
-):
+    ds: ObjectDataset,
+    dataloader: DataLoader,
+    device: torch.device,
+    lambdas: Lambdas,
+    pretrain: bool,
+    prefix: str,
+) -> Tuple[Dict[str, float], ObjectTensorDataBatch]:
     """
     Evaluates model and logs metrics.
     """
@@ -128,10 +139,9 @@ def evaluate(
     net_d.to(device).eval()
 
     with torch.no_grad():
-
         # Initialize metrics
         loss_gs, loss_ds, real_preds, fake_preds = [], [], [], []
-        metric_calculator = MetricCalculator(device, ds.transform_reverse_fn_cars)
+        metric_calculator = MetricCalculator(device, ds.transform_reverse_fn_objects)
 
         for real in tqdm(dataloader, desc="Evaluating Model"):
             real = real.to(device)
@@ -143,7 +153,9 @@ def evaluate(
                 hinge_loss_d,
             )
             metric_calculator.update(real, fakes)
-            loss_g, _, _ = compute_loss_g(net_g, net_d, real, hinge_loss_g)
+            loss_g, _, _ = compute_loss_g(
+                net_g, net_d, real, hinge_loss_g, lambdas, pretrain
+            )
 
             # Update metrics
             loss_gs.append(loss_g)
@@ -165,82 +177,133 @@ def evaluate(
             f"{prefix}InceptionSim": metrics.inception_sim,
         }
 
-        # Create samples
-        if train:
-            true_samples = real.car.cpu()
-            true_samples = vutils.make_grid(
-                true_samples, nrow=8, padding=4, normalize=True
-            )
-            # bgnd_samples = real_bgnd.cpu()
-            # bgnd_samples = vutils.make_grid(bgnd_samples, nrow=8, padding=4, normalize=True)
-            pose_samples = real.pose.cpu()
-            pose_samples = vutils.make_grid(
-                pose_samples, nrow=8, padding=4, normalize=True
-            )
-            fake_samples = net_g(real)
-            fake_samples = F.interpolate(fake_samples, 256).cpu()
-            fake_samples = vutils.make_grid(
-                fake_samples, nrow=8, padding=4, normalize=True
-            )
-
-    return metrics if not train else (metrics, true_samples, pose_samples, fake_samples)
+    return metrics, real
 
 
+def get_samples(
+    net_g: PoseGen, real: ObjectTensorDataBatch
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    true_samples = real.object.cpu()
+    true_samples = vutils.make_grid(true_samples, nrow=8, padding=4, normalize=True)
+    # bgnd_samples = real_bgnd.cpu()
+    # bgnd_samples = vutils.make_grid(bgnd_samples, nrow=8, padding=4, normalize=True)
+    pose_samples = real.pose.cpu()
+    pose_samples = vutils.make_grid(pose_samples, nrow=8, padding=4, normalize=True)
+    fake_samples = net_g(real)
+    fake_samples = F.interpolate(fake_samples, 256).cpu()
+    fake_samples = vutils.make_grid(fake_samples, nrow=8, padding=4, normalize=True)
+    return true_samples, pose_samples, fake_samples
+
+
+@dataclass
 class Trainer:
-    r"""
-    Trainer performs GAN training, checkpointing and logging.
-    Attributes:
-        net_g (Module): Torch generator model.
-        net_d (Module): Torch discriminator model.
-        opt_g (Optimizer): Torch optimizer for generator.
-        opt_d (Optimizer): Torch optimizer for discriminator.
-        sch_g (Scheduler): Torch lr scheduler for generator.
-        sch_d (Scheduler): Torch lr scheduler for discriminator.
-        train_dataloader (Dataloader): Torch training set dataloader.
-        eval_dataloader (Dataloader): Torch evaluation set dataloader.
-        nz (int): Generator input / noise dimension.
-        log_dir (str): Path to store log outputs.
-        ckpt_dir (str): Path to store and load checkpoints.
-        device (Device): Torch device to perform training on.
-    """
+    dataset: str
+    lambda_gan: float
+    lambda_full: float
+    lambda_object: float
+    lambda_background: float
+    pretrain: bool
+    condition_on_object: bool
+    condition_on_pose: bool
+    condition_on_background: bool
+    seed: int
+    skip_connections: bool
+    ndf: int
+    ngf: int
+    bottom_width: int
+    out_path: str
+    lr: float
+    betas: Tuple[float, float]
+    nz: int
+    batch_size: int
+    num_workers: int
+    log_dir: str
+    ckpt_dir: str
+    repeat_d: int
+    max_steps: int
+    eval_every: int
+    ckpt_every: int
+    resume: bool
+    name: str
+    device: torch.device
 
-    def __init__(
-        self,
-        net_g: PoseGen,
-        net_d: Discriminator,
-        opt_g: Optimizer,
-        opt_d: Optimizer,
-        sch_g: LambdaLR,
-        sch_d: LambdaLR,
-        ds_train: CarDataset,
-        train_dataloader: DataLoader,
-        eval_dataloader: DataLoader,
-        test_dataloader: DataLoader,
-        nz: int,
-        log_dir: str,
-        ckpt_dir: str,
-        device: torch.device,
-    ):
-        # Setup models, dataloader, optimizers
-        self.net_g = net_g.to(device)
-        self.net_d = net_d.to(device)
-        self.opt_g = opt_g
-        self.opt_d = opt_d
-        self.sch_g = sch_g
-        self.sch_d = sch_d
-        self.train_dataloader = train_dataloader
-        self.eval_dataloader = eval_dataloader
-        self.test_dataloader = test_dataloader
-        self.ds_train = ds_train
+    @classmethod
+    def from_configs(
+        cls, params_common: ConfigCommon, params: Config, name: str
+    ) -> "Trainer":
+        device = get_device()
+        rest = dict(device=device, name=name, resume=False)
+        args = {**params_common.__dict__, **params.__dict__, **rest}
+        return cls(**args)
 
-        # Setup training parameters
-        self.device = device
-        self.nz = nz
+    @property
+    def dataset_loader_fns(self) -> Dict[str, Callable[[Split], ObjectDataset]]:
+        return dict(
+            stanford_cars=datasets.get_stanford_cars_dataset,
+            tesla=datasets.get_tesla_dataset,
+        )
+
+    def __post_init__(self):
+        self._dir_checks()
+        self.lambdas = Lambdas(
+            gan=self.lambda_gan, full=self.lambda_full, obj=self.lambda_object
+        )
+
+        # dataset
+        ds_loader = self.dataset_loader_fns[self.dataset]
+        ds_loader(Split.train)
+        self.ds_train = ds_loader(Split.train)
+        args_dl = dict(
+            batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers
+        )
+        self.train_dl = self.ds_train.get_dataloader(**args_dl)
+        self.validation_dl = ds_loader(Split.validation).get_dataloader(**args_dl)
+        self.test_dl = ds_loader(Split.test).get_dataloader(**args_dl)
+
+        torch.manual_seed(self.seed)
+        self.net_g = self._instantiate_net_g()
+        self.net_d = Discriminator(ndf=self.ndf)
+
+        self.opt_g = optim.Adam(self.net_g.parameters(), self.lr, self.betas)
+        self.opt_d = optim.Adam(self.net_d.parameters(), self.lr, self.betas)
+
+        self.sch_g = optim.lr_scheduler.LambdaLR(
+            self.opt_g, lr_lambda=lambda s: 1.0 - ((s * self.repeat_d) / self.max_steps)
+        )
+        self.sch_d = optim.lr_scheduler.LambdaLR(
+            self.opt_d, lr_lambda=lambda s: 1.0 - (s / self.max_steps)
+        )
+
         self.step = 0
+        self.logger = tbx.SummaryWriter(self.log_dir)
 
-        # Setup checkpointing, evaluation and logging
-        self.logger = tbx.SummaryWriter(log_dir)
-        self.ckpt_dir = ckpt_dir
+    def _instantiate_net_g(self) -> PoseGen:
+        return PoseGen(
+            ndf=self.ndf,
+            ngf=self.ngf,
+            bottom_width=self.bottom_width,
+            skip_connections=self.skip_connections,
+            condition_on_object=self.condition_on_object,
+            condition_on_pose=self.condition_on_pose,
+            condition_on_background=self.condition_on_background,
+            nz=self.nz,
+        )
+
+    def _dir_checks(self) -> None:
+        if not Path(self.log_dir).exists():
+            raise FileNotFoundError(f"data directory {self.log_dir} not found")
+        exp_dir = Path(self.out_path) / Path(self.name)
+        if not self.resume and exp_dir.exists():
+            raise FileExistsError(
+                f"experiment {self.name} already exists. either resume or pass a new experiment name."
+            )
+        for p in (
+            self.out_path,
+            exp_dir,
+            exp_dir / Path("log"),
+            exp_dir / Path("ckpt"),
+        ):
+            Path(p).mkdir(exist_ok=True)
 
     def _state_dict(self):
         return {
@@ -277,26 +340,24 @@ class Trainer:
         """
         Saves model, optimizer and trainer states.
         """
-
         ckpt_path = os.path.join(self.ckpt_dir, f"{self.step}.pth")
         torch.save(self._state_dict(), ckpt_path)
 
-    def _log(
-        self, metrics: dict, true_samples: torch.Tensor, sil_samples, fake_samples
-    ):
+    def _log(self, metrics: Dict[str, float], real: ObjectTensorDataBatch):
         r"""
         Logs metrics and samples to Tensorboard.
         """
 
         for k, v in metrics.items():
             self.logger.add_scalar(k, v, self.step)
-        self.logger.add_image("real/object", true_samples, self.step)
+        obj, pose, fake = get_samples(self.net_g, real)
+        self.logger.add_image("real/object", obj, self.step)
         # self.logger.add_image("real/background", bgnd_samples, self.step)
-        self.logger.add_image("real/silhouette", sil_samples, self.step)
-        self.logger.add_image("fake", fake_samples, self.step)
+        self.logger.add_image("real/pose", pose, self.step)
+        self.logger.add_image("fake", fake, self.step)
         self.logger.flush()
 
-    def _train_step_g(self, real: CarTensorDataBatch) -> None:
+    def _train_step_g(self, real: ObjectTensorDataBatch) -> torch.Tensor:
         r"""
         Performs a generator training step.
         """
@@ -306,14 +367,11 @@ class Trainer:
             self.opt_g,
             self.sch_g,
             lambda: compute_loss_g(
-                self.net_g,
-                self.net_d,
-                real,
-                hinge_loss_g,
+                self.net_g, self.net_d, real, hinge_loss_g, self.lambdas, self.pretrain
             )[0],
         )
 
-    def _train_step_d(self, real: CarTensorDataBatch) -> None:
+    def _train_step_d(self, real: ObjectTensorDataBatch) -> torch.Tensor:
         r"""
         Performs a discriminator training step.
         """
@@ -330,14 +388,9 @@ class Trainer:
             )[0],
         )
 
-    def train(
-        self, max_steps: int, repeat_d: int, eval_every: int, ckpt_every: int
-    ) -> None:
-        r"""
+    def train(self) -> None:
+        """
         Performs GAN training, checkpointing and logging.
-        Attributes:
-            max_steps (int): Number of steps before stopping.
-            repeat_d (int): Number of discriminator updates before a generator update.
             eval_every (int): Number of steps before logging to Tensorboard.
             ckpt_every (int): Number of steps before checkpointing models.
         """
@@ -345,20 +398,20 @@ class Trainer:
         self._load_checkpoint()
 
         while True:
-            pbar = tqdm(self.train_dataloader)
+            pbar = tqdm(self.train_dl)
             for real in pbar:
                 # Training step
                 # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
                 real = real.to(self.device)
                 loss_d = self._train_step_d(real)
-                if self.step % repeat_d == 0:
+                if self.step % self.repeat_d == 0:
                     loss_g = self._train_step_g(real)
 
                 pbar.set_description(
-                    f"L(G):{loss_g.item():.2f}|L(D):{loss_d.item():.2f}|{self.step}/{max_steps}"
+                    f"L(G):{loss_g.item():.2f}|L(D):{loss_d.item():.2f}|{self.step}/{self.max_steps}"
                 )
 
-                if self.step != 0 and self.step % eval_every == 0:
+                if self.step != 0 and self.step % self.eval_every == 0:
                     evaluate_partial = functools.partial(
                         evaluate,
                         net_g=self.net_g,
@@ -366,22 +419,18 @@ class Trainer:
                         device=self.device,
                         ds=self.ds_train,
                     )
-                    eval_res = evaluate_partial(
-                        dataloader=self.eval_dataloader,
-                        train=True,
+                    eval_metrics, eval_real = evaluate_partial(
+                        dataloader=self.validation_dl,
                         prefix="validation_",
                     )
-                    self._log(*eval_res)
-                    eval_metrics = eval_res[0]
+                    self._log(eval_metrics, eval_real)
                     wandb.log(eval_metrics)
-                    test_res = evaluate_partial(
-                        dataloader=self.test_dataloader, train=False, prefix="test_"
-                    )
+                    test_res = evaluate_partial(dataloader=self.test_dl, prefix="test_")
                     wandb.log(test_res)
 
-                if self.step != 0 and self.step % ckpt_every == 0:
+                if self.step != 0 and self.step % self.ckpt_every == 0:
                     self._save_checkpoint()
 
                 self.step += 1
-                if self.step > max_steps:
+                if self.step > self.max_steps:
                     return

@@ -9,9 +9,9 @@ from torchmetrics import CosineSimilarity, FID, IS, KID
 
 from .datatypes import (
     BinaryMask,
-    CarTensorData,
-    CarTensorDataBatch,
-    CarWithMask,
+    ObjectTensorData,
+    ObjectTensorDataBatch,
+    ObjectWithMask,
     TensorToPILFn,
 )
 from .utils import binarize_pose
@@ -29,14 +29,14 @@ class Metrics:
 @dataclass(frozen=False)
 class IoU:
     tensor_to_image_fn: TensorToPILFn
-    reals: List[CarTensorDataBatch] = field(default_factory=list)
+    reals: List[ObjectTensorDataBatch] = field(default_factory=list)
     fakes: List[torch.Tensor] = field(default_factory=list)
 
-    def update(self, real: CarTensorDataBatch, fake_car: torch.Tensor) -> None:
-        if len(real.car) != len(fake_car):
+    def update(self, real: ObjectTensorDataBatch, fake_object: torch.Tensor) -> None:
+        if len(real.object) != len(fake_object):
             raise ValueError("unequal number of real and fake images")
         self.reals.append(real)
-        self.fakes.append(fake_car)
+        self.fakes.append(fake_object)
 
     def compute(self) -> float:
         ious = [
@@ -52,12 +52,12 @@ class IoU:
         den = (m1 | m2).sum()
         return num / den if den > 0 else 0
 
-    def _compute_one(self, real: CarTensorData, fake: torch.Tensor) -> float:
+    def _compute_one(self, real: ObjectTensorData, fake: torch.Tensor) -> float:
         # all three channels the same? looks like it
         real_pose = real.pose.cpu().numpy()[0]
         real_pose_binary = binarize_pose(real_pose)
-        fake = CarWithMask.from_tensor(fake, self.tensor_to_image_fn)
-        return self.iou(fake.car_mask, real_pose_binary)
+        fake = ObjectWithMask.from_tensor(fake, self.tensor_to_image_fn)
+        return self.iou(fake.object_mask, real_pose_binary)
 
 
 class FIDBetter(FID):
@@ -79,15 +79,15 @@ class MetricCalculator:
         self.kid_obj = KID(subset_size=32).to(self.device)
         self.iou_obj = IoU(self.tensor_to_image_fn)
 
-    def update(self, real: CarTensorDataBatch, fake_car: torch.Tensor) -> None:
-        reals_inception = self.prepare_data_for_inception(real.car, self.device)
-        fakes_inception = self.prepare_data_for_inception(fake_car, self.device)
+    def update(self, real: ObjectTensorDataBatch, fake_object: torch.Tensor) -> None:
+        reals_inception = self.prepare_data_for_inception(real.object, self.device)
+        fakes_inception = self.prepare_data_for_inception(fake_object, self.device)
         self.is_obj.update(fakes_inception)
         self.fid_obj.update(reals_inception, real=True)
         self.fid_obj.update(fakes_inception, real=False)
         self.kid_obj.update(reals_inception, real=True)
         self.kid_obj.update(fakes_inception, real=False)
-        self.iou_obj.update(real, fake_car)
+        self.iou_obj.update(real, fake_object)
 
     def compute(self) -> Metrics:
         return Metrics(

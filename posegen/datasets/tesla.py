@@ -3,13 +3,13 @@ from typing import Tuple
 
 import pandas as pd
 
-from .dataset import CarDataset
+from .dataset import ObjectDataset
 from .. import config
 from ..datatypes import Split
 from ..utils import get_mmh3
 
 
-class TeslaDataset(CarDataset):
+class TeslaDataset(ObjectDataset):
     def _split(self, df: pd.DataFrame) -> pd.DataFrame:
         # this could be done offline and stored so we don't have to do it on-the-fly
         # in general this is not very expensive though
@@ -26,8 +26,8 @@ class TeslaDataset(CarDataset):
 
 
 def get_tesla_dataset(
-    random_pose: bool,
     split: Split,
+    random_pose: bool = False,
     path: str = config.tesla_path_dataset,
     seed: int = config.seed_data,
     n_pose_pairs: int = config.n_pose_pairs,
@@ -38,7 +38,7 @@ def get_tesla_dataset(
     transforms_std_cars: Tuple[float, ...] = config.transforms_std_cars_tesla,
     transforms_mean_poses: Tuple[float, ...] = config.transforms_mean_poses_tesla,
     transforms_std_poses: Tuple[float, ...] = config.transforms_std_poses_tesla,
-) -> CarDataset:
+) -> ObjectDataset:
     return TeslaDataset(
         path=path,
         random_pose=random_pose,
@@ -48,8 +48,8 @@ def get_tesla_dataset(
         extension=extension,
         width=width,
         height=height,
-        transforms_mean_cars=transforms_mean_cars,
-        transforms_std_cars=transforms_std_cars,
+        transforms_mean_objects=transforms_mean_cars,
+        transforms_std_objects=transforms_std_cars,
         transforms_mean_poses=transforms_mean_poses,
         transforms_std_poses=transforms_std_poses,
     )

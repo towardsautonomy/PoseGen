@@ -4,7 +4,8 @@ import logging
 import wandb
 
 from posegen import config
-from train import train
+from posegen.experiments import cars, common, Config, ConfigCommon
+from posegen.trainer import Trainer
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -12,9 +13,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Experiment:
-    dataset: str
-    architecture: str
-    lambda_: float
+    params: Config
+    params_common: ConfigCommon
     wandb_project_name = config.wandb["project_name"]
     wandb_entity = config.wandb["entity"]
 
@@ -24,13 +24,10 @@ class Experiment:
 
     @property
     def config(self) -> dict:
-        return {
-            "dataset": self.dataset,
-            "architecture": self.architecture,
-            "lambda": self.lambda_,
-        }
+        return self.params.__dict__
 
     def run(self):
+        # TODO: cache results
         with wandb.init(
             project=self.wandb_project_name,
             config=self.config,
@@ -39,5 +36,16 @@ class Experiment:
             entity=self.wandb_entity,
         ):
             logger.info(f"experiment {self.name}")
-            # TODO: add training
-            train(...)
+            trainer = Trainer.from_configs(
+                params_common=self.params_common,
+                params=self.params,
+                name=self.name,
+            )
+            trainer.train()
+
+
+if __name__ == "__main__":
+    # run experiment, log to wandb, analyze data from wandb
+    for params in cars.experiments:
+        exp = Experiment(params=params, params_common=common.config)
+        exp.run()

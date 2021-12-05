@@ -22,111 +22,112 @@ class Split(Enum):
     test = "test"
 
 
-class Architecture(Enum):
-    unconditional = "unconditional"
-    pose_only = "pose_only"
-    pose_and_car = "pose_and_car"
-    pose_car_background = "pose_car_background"
+@dataclass
+class Lambdas:
+    gan: float
+    full: float
+    obj: float
+    background: Optional[float] = None
 
 
 @dataclass
-class CarTensorData:
-    car: torch.Tensor
+class ObjectTensorData:
+    object: torch.Tensor
     pose: torch.Tensor
     background: Optional[torch.Tensor] = None
 
 
 @dataclass
-class CarWithMask:
+class ObjectWithMask:
     width: int
     height: int
-    car_image_path: Path = None
-    car_image_frame: PILImage = None
+    object_image_path: Path = None
+    object_image_frame: PILImage = None
     mask_random: Optional[BinaryMask] = None
-    category_idx: Optional[int] = None
 
     @classmethod
     def from_tensor(
         cls,
         tensor: torch.Tensor,
         tensor_to_image_fn: TensorToPILFn,
-    ) -> "CarWithMask":
+    ) -> "ObjectWithMask":
         _, w, h = tensor.shape
         image = tensor_to_image_fn(tensor)
-        return CarWithMask(w, h, car_image_frame=image)
+        return ObjectWithMask(w, h, object_image_frame=image)
 
     @property
     def mask(self) -> BinaryMask:
-        return self.mask_random if self.mask_random is not None else self.car_mask
+        return self.mask_random if self.mask_random is not None else self.object_mask
 
     @property
     def mask_path(self) -> Optional[Path]:
-        if self.car_image_path:
-            md5 = get_md5(self.car_image_path)
+        if self.object_image_path:
+            md5 = get_md5(self.object_image_path)
             # TODO: add height and width to this
             # TODO: put in ~/.cache/ instead
+            # TODO: rename car => object
             return Path("/tmp") / Path(f"car_mask_{md5}.npy")
 
     @property
-    def car_mask(self) -> BinaryMask:
+    def object_mask(self) -> BinaryMask:
         from .instance_segmentation import get_mask
 
         path = self.mask_path
         if path is not None and path.exists():
-            return np.load(open(path, "rb"), allow_pickle=True)
-        mask = get_mask(image=self.car_image)
+            return np.load(str(path), allow_pickle=True)
+        mask = get_mask(image=self.object_image)
         if mask is None:
             mask = np.zeros((self.width, self.height), dtype=bool)
         if path:
             path.parent.mkdir(exist_ok=True)
-            np.save(open(path, "wb"), mask)
+            np.save(str(path), mask)
         return mask
 
     @property
-    def car_image(self) -> PILImage:
+    def object_image(self) -> PILImage:
         return (
-            self.car_image_frame
-            if self.car_image_frame is not None
+            self.object_image_frame
+            if self.object_image_frame is not None
             else self._get_image_from_path()
         )
 
     def _get_image_from_path(self) -> PILImage:
-        img = Image.open(self.car_image_path)
+        img = Image.open(self.object_image_path)
         return img.resize((self.width, self.height))
 
 
 @dataclass
-class CarTensorDataBatch:
-    car: torch.Tensor
+class ObjectTensorDataBatch:
+    object: torch.Tensor
     pose: torch.Tensor
     background: Optional[torch.Tensor] = None
 
     @classmethod
-    def collate_fn(cls, batch: List[CarTensorData]) -> "CarTensorDataBatch":
+    def collate_fn(cls, batch: List[ObjectTensorData]) -> "ObjectTensorDataBatch":
         return cls(
-            car=cls._get(batch, "car"),
+            object=cls._get(batch, "object"),
             pose=cls._get(batch, "pose"),
             background=cls._get(batch, "background"),
         )
 
     @staticmethod
-    def _get(batch: List[CarTensorData], name: str) -> Optional[torch.Tensor]:
+    def _get(batch: List[ObjectTensorData], name: str) -> Optional[torch.Tensor]:
         values = [getattr(item, name) for item in batch]
         return torch.stack(values) if values[0] is not None else None
 
-    def get_idx(self, idx: int) -> "CarTensorData":
+    def get_idx(self, idx: int) -> "ObjectTensorData":
         """
         Assumes that we have a batch of data so we can get individual items.
         """
-        return CarTensorData(
-            car=self.car[idx],
+        return ObjectTensorData(
+            object=self.object[idx],
             pose=self.pose[idx],
             background=self.background[idx] if self.has_background else None,
         )
 
-    def to(self, device: torch.device) -> "CarTensorData":
-        return CarTensorData(
-            car=self.car.to(device),
+    def to(self, device: torch.device) -> "ObjectTensorData":
+        return ObjectTensorData(
+            object=self.object.to(device),
             pose=self.pose.to(device),
             background=self.background.to(device) if self.has_background else None,
         )
@@ -136,4 +137,4 @@ class CarTensorDataBatch:
         return self.background is not None
 
     def __len__(self) -> int:
-        return len(self.car)
+        return len(self.object)
