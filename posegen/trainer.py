@@ -290,8 +290,6 @@ class Trainer:
         )
 
     def _dir_checks(self) -> None:
-        if not Path(self.log_dir).exists():
-            raise FileNotFoundError(f"data directory {self.log_dir} not found")
         exp_dir = Path(self.out_path) / Path(self.name)
         if not self.resume and exp_dir.exists():
             raise FileExistsError(

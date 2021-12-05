@@ -28,20 +28,20 @@ class Experiment:
 
     def run(self):
         # TODO: cache results
-        with wandb.init(
-            project=self.wandb_project_name,
-            config=self.config,
-            tags=None,
+        # with wandb.init(
+        #     project=self.wandb_project_name,
+        #     config=self.config,
+        #     tags=None,
+        #     name=self.name,
+        #     entity=self.wandb_entity,
+        # ):
+        logger.info(f"experiment {self.name}")
+        trainer = Trainer.from_configs(
+            params_common=self.params_common,
+            params=self.params,
             name=self.name,
-            entity=self.wandb_entity,
-        ):
-            logger.info(f"experiment {self.name}")
-            trainer = Trainer.from_configs(
-                params_common=self.params_common,
-                params=self.params,
-                name=self.name,
-            )
-            trainer.train()
+        )
+        trainer.train()
 
 
 if __name__ == "__main__":
