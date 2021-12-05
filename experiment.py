@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class Experiment:
     params: Config
     params_common: ConfigCommon
-    wandb_project_name = config.wandb["project_name"]
+    wandb_project_name = config.wandb["project"]
     wandb_entity = config.wandb["entity"]
 
     @property
