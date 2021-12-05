@@ -9,6 +9,14 @@ device = "cuda"
 tesla_path_dataset = "/data/PoseGen_resized/cars/"
 tesla_extension = "JPEG"
 
+# stanford cars
+stanford_cars_path_base = "/data/cars/car_devkit/devkit/"
+stanford_cars_path_meta = f"{stanford_cars_path_base}/cars_meta.mat"
+stanford_cars_path_train = f"{stanford_cars_path_base}/cars_train_annos.mat"
+stanford_cars_path_test = f"{stanford_cars_path_base}/cars_test_annos_withlabels.mat"
+stanford_cars_extension = "jpg"
+
+
 seed_data = 0
 n_pose_pairs = 1
 
@@ -27,6 +35,11 @@ transforms_mean_cars_tesla = (0.5, 0.5, 0.5)
 transforms_std_cars_tesla = (0.24, 0.24, 0.24)
 transforms_mean_poses_tesla = (0.25, 0.25, 0.25)
 transforms_std_poses_tesla = (0.43, 0.43, 0.43)
+# TODO: get these values
+transforms_mean_cars_stanford_cars = (0, 0, 0)
+transforms_std_cars_stanford_cars = (1, 1, 1)
+transforms_mean_poses_stanford_cars = (0, 0, 0)
+transforms_std_poses_stanford_cars = (1, 1, 1)
 
 
 # instance segmentation

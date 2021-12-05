@@ -1,3 +1,4 @@
+import functools
 from typing import Optional, List, Tuple
 
 import torch
@@ -239,7 +240,8 @@ class PoseGen(nn.Module):
 
     @staticmethod
     def _sum_lists(*xs: Optional[List[torch.Tensor]]) -> List[torch.Tensor]:
-        return [sum((h for h in hs if h is not None), []) for hs in zip(xs)]
+        xs_nones_removed = (x for x in xs if x is not None)
+        return [sum(hs) for hs in zip(*xs_nones_removed)]
 
     @staticmethod
     def _cat(*xs: Optional[torch.Tensor]) -> torch.Tensor:
@@ -254,20 +256,15 @@ class PoseGen(nn.Module):
     def forward(self, data: CarTensorDataBatch):
         if self.unconditional:
             z = torch.randn(len(data.car), self.nz, device=data.car.device)
-            hidden_features = []
-            self.skip_connections = False
-            self.appearance_input = False
-            self.bgnd_input = False
+            h = []
         else:
-            z_pose, pose_hidden_features = self.pose_enc(data.pose)
-            z_appear, appear_hidden_features = self._apply_encoder(
+            z_pose, h_pose = self.pose_enc(data.pose)
+            z_appear, h_car = self._apply_encoder(
                 self.appearance_input, self.obj_appear_enc, data.car
             )
-            z_bgnd, bgnd_hidden_features = self._apply_encoder(
+            z_bgnd, h_background = self._apply_encoder(
                 self.bgnd_input, self.background_enc, data.background
             )
-            hidden_features = self._sum_lists(
-                pose_hidden_features, appear_hidden_features, bgnd_hidden_features
-            )
+            h = self._sum_lists(h_pose, h_car, h_background)
             z = self._cat(z_pose, z_appear, z_bgnd)
-        return self.dec(z, hidden_features)
+        return self.dec(z, h)

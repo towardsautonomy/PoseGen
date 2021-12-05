@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from pathlib import Path
 
+import mmh3
+
 
 def cuda_available() -> bool:
     return torch.cuda.is_available()
@@ -20,3 +22,7 @@ def binarize_pose(pose: np.ndarray) -> np.ndarray:
 
 def get_md5(path: Path) -> str:
     return hashlib.md5(open(path, "rb").read()).hexdigest()
+
+
+def get_mmh3(s: str, seed: int) -> int:
+    return mmh3.hash(s, seed=seed)

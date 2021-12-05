@@ -1,10 +1,8 @@
-import functools
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Sequence, Tuple
 from torch.utils.data import DataLoader
 
-import mmh3
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -49,7 +47,8 @@ class CarDataset(Dataset):
             raise ValueError("each image has a unique pose")
 
         self._np_rand_state = np.random.RandomState(self.seed)
-        self._df = self._split(self.path, self.extension, self.seed)
+        self._df_path_md5 = self._get_df_path_md5(self.path, self.extension)
+        self._df = self._split(self._df_path_md5)
         self._df_split = self._df[self._df.split == self.split].sort_values(by="md5")
         self._cars = (
             CarWithMask(car_image_path=path, width=self.width, height=self.height)
@@ -133,23 +132,11 @@ class CarDataset(Dataset):
         ]
 
     @staticmethod
-    def _get_mmh3(s: str, seed: int) -> str:
-        return mmh3.hash(s, seed=seed)
-
-    def _split(self, path_base: str, ext: str, seed: int) -> pd.DataFrame:
-        # this could be done offline and stored so we don't have to do it on-the-fly
-        # in general this is not very expensive though
-        # the splitting is tied to the MD5 of the file and is invariant to the location on disk
-        df = pd.DataFrame(
+    def _get_df_path_md5(path_base: str, ext: str) -> pd.DataFrame:
+        return pd.DataFrame(
             {"path": path, "md5": get_md5(path)}
             for path in Path(path_base).rglob(f"*.{ext}")
         )
-        # TODO: for stanford cars this should be at category level, so if it works we can claim generalization
-        # TODO: use decimals (instead of the hardcoded 80/10/10) to make this more general
-        splits = (
-            df.md5.map(functools.partial(self._get_mmh3, seed=seed))
-            .map(lambda x: x % 10)
-            .map({8: Split.validation, 9: Split.test})
-            .fillna(Split.train)
-        )
-        return df.assign(split=splits)
+
+    def _split(self, df: pd.DataFrame) -> pd.DataFrame:
+        raise NotImplementedError
