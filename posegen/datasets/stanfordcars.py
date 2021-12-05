@@ -54,8 +54,8 @@ class StanfordCars(CarDataset):
         # TODO: make this more general
         df = df.assign(
             partition_new=(df.murmur_hash % 10)
-            .map({8: "validation", 9: "test"})
-            .fillna("train")
+            .map({8: Split.validation, 9: Split.test})
+            .fillna(Split.train)
         )
         assert len(df) == df.label.count()
         return df
