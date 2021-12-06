@@ -261,7 +261,6 @@ class Trainer:
 
         # dataset
         ds_loader = self.dataset_loader_fns[self.dataset]
-        ds_loader(Split.train)
         self.ds_train = ds_loader(Split.train)
         args_dl = dict(
             batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers

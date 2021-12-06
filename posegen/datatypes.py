@@ -125,8 +125,8 @@ class ObjectTensorDataBatch:
             background=self.background[idx] if self.has_background else None,
         )
 
-    def to(self, device: torch.device) -> "ObjectTensorData":
-        return ObjectTensorData(
+    def to(self, device: torch.device) -> "ObjectTensorDataBatch":
+        return ObjectTensorDataBatch(
             object=self.object.to(device),
             pose=self.pose.to(device),
             background=self.background.to(device) if self.has_background else None,
