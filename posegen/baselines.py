@@ -7,7 +7,7 @@ from PIL import Image
 import torch
 
 from . import config
-from .datasets import ObjectDataset, tesla
+from .datasets import ObjectDataset, stanfordcars, tesla
 from .datasets.utils import tensor_to_pil
 from .datatypes import (
     BinaryMask,
@@ -148,7 +148,8 @@ FromDiskShubham = functools.partial(
 
 
 @dataclass(frozen=True)
-class BaselinesTesla:
+class BaselinesCars:
+    ds: str
     batch_size: int = config.baselines_tesla_batch_size
     num_workers: int = config.baselines_tesla_num_workers
     seed: int = config.seed
@@ -156,10 +157,20 @@ class BaselinesTesla:
     baseline2: bool = True
     baseline3: bool = True
 
-    def _baselines_tesla(self, split: Split) -> Dict[str, Metrics]:
-        fn = functools.partial(tesla.get_tesla_dataset, random_pose=False)
-        ds_train = fn(split=Split.train)
-        ds = fn(split=split)
+    @property
+    def dataset_fn(self):
+        return dict(
+            tesla=tesla.get_tesla_dataset,
+            stanford_cars=stanfordcars.get_stanford_cars_dataset,
+        )
+
+    def get_dataset(self, split: Split) -> ObjectDataset:
+        fn = self.dataset_fn[self.ds]
+        return fn(split)
+
+    def _baselines(self, split: Split) -> Dict[str, Metrics]:
+        ds_train = self.get_dataset(Split.train)
+        ds = self.get_dataset(split)
         args = dict(
             ds=ds,
             ds_train=ds_train,
@@ -178,10 +189,10 @@ class BaselinesTesla:
         }
 
     def validation(self) -> Dict[str, Metrics]:
-        return self._baselines_tesla(Split.validation)
+        return self._baselines(Split.validation)
 
     def test(self) -> Dict[str, Metrics]:
-        return self._baselines_tesla(Split.test)
+        return self._baselines(Split.test)
 
     def train(self) -> Dict[str, Metrics]:
-        return self._baselines_tesla(Split.train)
+        return self._baselines(Split.train)
