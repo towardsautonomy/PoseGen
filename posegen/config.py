@@ -10,10 +10,11 @@ tesla_path_dataset = "/data/PoseGen_resized/cars/"
 tesla_extension = "JPEG"
 
 # stanford cars
-stanford_cars_path_base = "/data/cars/car_devkit/devkit"
-stanford_cars_path_meta = f"{stanford_cars_path_base}/cars_meta.mat"
-stanford_cars_path_train = f"{stanford_cars_path_base}/cars_train_annos.mat"
-stanford_cars_path_test = f"{stanford_cars_path_base}/cars_test_annos_withlabels.mat"
+stanford_cars_path_base = "/data/cars/car_devkit"
+stanford_cars_path_meta_base = f"{stanford_cars_path_base}/devkit"
+stanford_cars_path_meta = f"{stanford_cars_path_meta_base}/cars_meta.mat"
+stanford_cars_path_train = f"{stanford_cars_path_meta_base}/cars_train_annos.mat"
+stanford_cars_path_test = f"{stanford_cars_path_meta_base}/cars_test_annos_withlabels.mat"
 stanford_cars_extension = "jpg"
 
 
