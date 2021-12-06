@@ -12,8 +12,8 @@ config = ConfigCommon(
     batch_size=64,
     num_workers=8,
     repeat_d=1,
-    max_steps=75_000,
+    max_steps=10,
     seed=0,
-    eval_every=500,
-    ckpt_every=500,
+    eval_every=2,
+    ckpt_every=2,
 )

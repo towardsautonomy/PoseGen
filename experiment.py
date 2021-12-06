@@ -35,7 +35,8 @@ class Experiment:
         #     name=self.name,
         #     entity=self.wandb_entity,
         # ):
-        logger.info(f"experiment {self.name}")
+        logger.info(f"experiment params : {self.name}")
+        logger.info(f"experiment details: {self}")
         trainer = Trainer.from_configs(
             params_common=self.params_common,
             params=self.params,
