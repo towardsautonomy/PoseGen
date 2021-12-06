@@ -28,24 +28,28 @@ class Metrics:
     loss_d: float = None
     preds_real: float = None
     preds_fake: float = None
+    prefix: str = None
 
     @classmethod
     def negative_infinity(cls) -> "Metrics":
         ni = -float("inf")
         return cls(ni, ni, ni, ni, ni)
 
-    def get_dict(self, prefix: str) -> dict:
-        return {
-            f"{prefix}-L(G)": self.loss_g,
-            f"{prefix}-L(D)": self.loss_d,
-            f"{prefix}-D(x)": self.preds_real,
-            f"{prefix}-D(G(z))": self.preds_fake,
-            f"{prefix}-IS": self.inception_score,
-            f"{prefix}-FID": self.fid,
-            f"{prefix}-KID": self.kid,
-            f"{prefix}-IoU": self.iou,
-            f"{prefix}-InceptionSim": self.inception_sim,
+    @property
+    def dict(self) -> dict:
+        d = {
+            "L(G)": self.loss_g,
+            "L(D)": self.loss_d,
+            "D(x)": self.preds_real,
+            "D(G(z))": self.preds_fake,
+            "IS": self.inception_score,
+            "FID": self.fid,
+            "KID": self.kid,
+            "IoU": self.iou,
+            "InceptionSim": self.inception_sim,
         }
+        prefix = f"{self.prefix}-" if self.prefix is not None else ""
+        return {f"{prefix}{k}": v for k, v in d.items()}
 
     @property
     def agg(self) -> float:
@@ -100,6 +104,7 @@ class FIDBetter(FID):
 class MetricCalculator:
     device: torch.device
     tensor_to_image_fn: TensorToPILFn
+    prefix: str = None
 
     def __post_init__(self):
         # TODO: what is this magic 32?
@@ -150,6 +155,7 @@ class MetricCalculator:
             loss_d=self._stack_mean("loss_ds"),
             preds_real=self._stack_mean("preds_real"),
             preds_fake=self._stack_mean("preds_fake"),
+            prefix=self.prefix,
         )
 
     @staticmethod

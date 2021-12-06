@@ -130,6 +130,7 @@ def evaluate(
     device: torch.device,
     lambdas: Lambdas,
     pretrain: bool,
+    prefix: str,
 ) -> Tuple[Metrics, ObjectTensorDataBatch]:
     """
     Evaluates model and logs metrics.
@@ -140,7 +141,9 @@ def evaluate(
 
     with torch.no_grad():
         # Initialize metrics
-        metric_calculator = MetricCalculator(device, ds.transform_reverse_fn_objects)
+        metric_calculator = MetricCalculator(
+            device, ds.transform_reverse_fn_objects, prefix
+        )
 
         for real in tqdm(dataloader, desc="Evaluating Model"):
             real = real.to(device)
@@ -417,13 +420,17 @@ class Trainer:
                     )
                     metrics_val, real_val = evaluate_partial(
                         dataloader=self.validation_dl,
+                        prefix="validation",
                     )
                     self._log(metrics_val, real_val)
-                    logger.info(metrics_val)
-                    wandb.log(metrics_val.get_dict("validation"))
+                    logger.info(metrics_val.dict)
+                    wandb.log(metrics_val.dict)
                     if metrics_val > best_val:
-                        metrics_test, _ = evaluate_partial(dataloader=self.test_dl)
-                        logger.info(metrics_test.get_dict("test"))
+                        metrics_test, _ = evaluate_partial(
+                            dataloader=self.test_dl,
+                            prefix="test",
+                        )
+                        logger.info(metrics_test.dict)
                         best_test = metrics_test
 
                 if self.step != 0 and self.step % self.ckpt_every == 0:
@@ -431,5 +438,5 @@ class Trainer:
 
                 self.step += 1
                 if self.step > self.max_steps:
-                    wandb.log(best_test.get_dict("test"))
+                    wandb.log(best_test.dict)
                     return
