@@ -425,6 +425,8 @@ class Trainer:
                         net_d=self.net_d,
                         device=self.device,
                         ds=self.ds_train,
+                        lambdas=self.lambdas,
+                        pretrain=self.pretrain,
                     )
                     eval_metrics, eval_real = evaluate_partial(
                         dataloader=self.validation_dl,
