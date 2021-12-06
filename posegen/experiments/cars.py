@@ -2,7 +2,7 @@ from . import Config
 
 experiments = [
     Config(
-        dataset="tesla",
+        dataset="stanford_cars",
         lambda_gan=1,
         lambda_full=0,
         lambda_object=1,
