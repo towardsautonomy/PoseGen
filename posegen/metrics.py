@@ -35,6 +35,7 @@ class IoU:
     def update(self, real: ObjectTensorDataBatch, fake_object: torch.Tensor) -> None:
         if len(real.object) != len(fake_object):
             raise ValueError("unequal number of real and fake images")
+        print(type(real), type(fake_object))
         self.reals.append(real)
         self.fakes.append(fake_object)
 
