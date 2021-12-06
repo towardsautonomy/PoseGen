@@ -345,7 +345,7 @@ class Trainer:
         Logs metrics and samples to Tensorboard.
         """
 
-        for k, v in metrics.get_dict("validation").items():
+        for k, v in metrics.dict.items():
             self.logger.add_scalar(k, v, self.step)
         obj, pose, fake = get_samples(self.net_g, real)
         self.logger.add_image("real/object", obj, self.step)
