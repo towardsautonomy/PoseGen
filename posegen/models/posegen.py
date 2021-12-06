@@ -270,5 +270,6 @@ class PoseGen(nn.Module):
                 self.condition_on_background, self.enc_background, data.background
             )
             h = self._sum_lists(h_o, h_p, h_b)
+            print(z_o.shape, z_p.shape, z_b)
             z = self._cat(z_o, z_p, z_b)
         return self.dec(z, h)
