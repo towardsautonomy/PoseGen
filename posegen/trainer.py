@@ -217,8 +217,6 @@ class Trainer:
     nz: int
     batch_size: int
     num_workers: int
-    log_dir: str
-    ckpt_dir: str
     repeat_d: int
     max_steps: int
     eval_every: int
@@ -242,6 +240,18 @@ class Trainer:
             stanford_cars=datasets.get_stanford_cars_dataset,
             tesla=datasets.get_tesla_dataset,
         )
+
+    @property
+    def exp_dir(self) -> Path:
+        return Path(self.out_path) / Path(self.name)
+
+    @property
+    def log_dir(self) -> Path:
+        return self.exp_dir / Path('logs')
+
+    @property
+    def ckpt_dir(self) -> Path:
+        return self.exp_dir / Path("ckpt")
 
     def __post_init__(self):
         self._dir_checks()
@@ -275,7 +285,7 @@ class Trainer:
         )
 
         self.step = 0
-        self.logger = tbx.SummaryWriter(self.log_dir)
+        self.logger = tbx.SummaryWriter(str(self.log_dir))
 
     def _instantiate_net_g(self) -> PoseGen:
         return PoseGen(
@@ -290,16 +300,15 @@ class Trainer:
         )
 
     def _dir_checks(self) -> None:
-        exp_dir = Path(self.out_path) / Path(self.name)
-        if not self.resume and exp_dir.exists():
+        if not self.resume and self.exp_dir.exists():
             raise FileExistsError(
                 f"experiment {self.name} already exists. either resume or pass a new experiment name."
             )
         for p in (
             self.out_path,
-            exp_dir,
-            exp_dir / Path("log"),
-            exp_dir / Path("ckpt"),
+            self.exp_dir,
+            self.log_dir,
+            self.ckpt_dir,
         ):
             Path(p).mkdir(exist_ok=True)
 

@@ -13,8 +13,6 @@ class ConfigCommon:
     nz: int
     batch_size: int
     num_workers: int
-    log_dir: str
-    ckpt_dir: str
     repeat_d: int
     max_steps: int
     seed: int
