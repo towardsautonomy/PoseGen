@@ -24,6 +24,35 @@ class Metrics:
     kid: float
     inception_sim: float
     iou: float
+    loss_g: float = None
+    loss_d: float = None
+    preds_real: float = None
+    preds_fake: float = None
+
+    @classmethod
+    def negative_infinity(cls) -> "Metrics":
+        ni = -float("inf")
+        return cls(ni, ni, ni, ni, ni)
+
+    def get_dict(self, prefix: str) -> dict:
+        return {
+            f"{prefix}-L(G)": self.loss_g,
+            f"{prefix}-L(D)": self.loss_d,
+            f"{prefix}-D(x)": self.preds_real,
+            f"{prefix}-D(G(z))": self.preds_fake,
+            f"{prefix}-IS": self.inception_score,
+            f"{prefix}-FID": self.fid,
+            f"{prefix}-KID": self.kid,
+            f"{prefix}-IoU": self.iou,
+            f"{prefix}-InceptionSim": self.inception_sim,
+        }
+
+    @property
+    def agg(self) -> float:
+        return (self.inception_sim + self.iou) / 2
+
+    def __lt__(self, other: "Metrics") -> bool:
+        return self.agg < other.agg
 
 
 @dataclass(frozen=False)
@@ -78,8 +107,20 @@ class MetricCalculator:
         self.is_obj = IS().to(self.device)
         self.kid_obj = KID(subset_size=32).to(self.device)
         self.iou_obj = IoU(self.tensor_to_image_fn)
+        self.loss_gs = []
+        self.loss_ds = []
+        self.preds_real = []
+        self.preds_fake = []
 
-    def update(self, real: ObjectTensorDataBatch, fake_object: torch.Tensor) -> None:
+    def update(
+        self,
+        real: ObjectTensorDataBatch,
+        fake_object: torch.Tensor,
+        loss_g: torch.Tensor = None,
+        loss_d: torch.Tensor = None,
+        preds_real: torch.Tensor = None,
+        preds_fake: torch.Tensor = None,
+    ) -> None:
         reals_inception = self.prepare_data_for_inception(real.object, self.device)
         fakes_inception = self.prepare_data_for_inception(fake_object, self.device)
         self.is_obj.update(fakes_inception)
@@ -88,6 +129,15 @@ class MetricCalculator:
         self.kid_obj.update(reals_inception, real=True)
         self.kid_obj.update(fakes_inception, real=False)
         self.iou_obj.update(real, fake_object)
+        if loss_g is not None:
+            self.loss_gs.append(loss_g)
+            self.loss_ds.append(loss_d)
+            self.preds_real.append(preds_real)
+            self.preds_fake.append(preds_fake)
+
+    def _stack_mean(self, item: str) -> float:
+        values = getattr(self, item)
+        return torch.stack(values).mean().item() if len(values) > 0 else None
 
     def compute(self) -> Metrics:
         return Metrics(
@@ -96,6 +146,10 @@ class MetricCalculator:
             kid=self.kid_obj.compute()[0].item(),
             iou=self.iou_obj.compute(),
             inception_sim=self.fid_obj.sim(),
+            loss_g=self._stack_mean("loss_gs"),
+            loss_d=self._stack_mean("loss_ds"),
+            preds_real=self._stack_mean("preds_real"),
+            preds_fake=self._stack_mean("preds_fake"),
         )
 
     @staticmethod

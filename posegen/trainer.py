@@ -19,11 +19,12 @@ from . import datasets
 from .datatypes import Lambdas, ObjectTensorDataBatch, Split
 from .datasets import ObjectDataset
 from .experiments import Config, ConfigCommon
-from .metrics import MetricCalculator
+from .metrics import Metrics, MetricCalculator
 from .models import Discriminator, PoseGen
-from .utils import binarize_pose, get_device
+from .utils import binarize_pose, get_device, get_logger
 
 
+logger = get_logger(__name__)
 LossGeneratorFn = Callable[[torch.Tensor], torch.Tensor]
 LossDiscriminatorFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
@@ -129,8 +130,7 @@ def evaluate(
     device: torch.device,
     lambdas: Lambdas,
     pretrain: bool,
-    prefix: str,
-) -> Tuple[Dict[str, float], ObjectTensorDataBatch]:
+) -> Tuple[Metrics, ObjectTensorDataBatch]:
     """
     Evaluates model and logs metrics.
     """
@@ -140,7 +140,6 @@ def evaluate(
 
     with torch.no_grad():
         # Initialize metrics
-        loss_gs, loss_ds, real_preds, fake_preds = [], [], [], []
         metric_calculator = MetricCalculator(device, ds.transform_reverse_fn_objects)
 
         for real in tqdm(dataloader, desc="Evaluating Model"):
@@ -152,31 +151,20 @@ def evaluate(
                 real,
                 hinge_loss_d,
             )
-            metric_calculator.update(real, fakes)
             loss_g, _, _ = compute_loss_g(
                 net_g, net_d, real, hinge_loss_g, lambdas, pretrain
             )
-
-            # Update metrics
-            loss_gs.append(loss_g)
-            loss_ds.append(loss_d)
-            real_preds.append(compute_prob(real_pred))
-            fake_preds.append(compute_prob(fake_pred))
+            metric_calculator.update(
+                real=real,
+                fake_object=fakes,
+                loss_g=loss_g,
+                loss_d=loss_d,
+                preds_real=real_pred,
+                preds_fake=fake_pred,
+            )
 
         # Process metrics
         metrics = metric_calculator.compute()
-        metrics = {
-            f"{prefix}L(G)": torch.stack(loss_gs).mean().item(),
-            f"{prefix}L(D)": torch.stack(loss_ds).mean().item(),
-            f"{prefix}D(x)": torch.stack(real_preds).mean().item(),
-            f"{prefix}D(G(z))": torch.stack(fake_preds).mean().item(),
-            f"{prefix}IS": metrics.inception_score,
-            f"{prefix}FID": metrics.fid,
-            f"{prefix}KID": metrics.kid,
-            f"{prefix}IoU": metrics.iou,
-            f"{prefix}InceptionSim": metrics.inception_sim,
-        }
-
     return metrics, real
 
 
@@ -247,7 +235,7 @@ class Trainer:
 
     @property
     def log_dir(self) -> Path:
-        return self.exp_dir / Path('logs')
+        return self.exp_dir / Path("logs")
 
     @property
     def ckpt_dir(self) -> Path:
@@ -349,12 +337,12 @@ class Trainer:
         ckpt_path = os.path.join(self.ckpt_dir, f"{self.step}.pth")
         torch.save(self._state_dict(), ckpt_path)
 
-    def _log(self, metrics: Dict[str, float], real: ObjectTensorDataBatch):
+    def _log(self, metrics: Metrics, real: ObjectTensorDataBatch) -> None:
         r"""
         Logs metrics and samples to Tensorboard.
         """
 
-        for k, v in metrics.items():
+        for k, v in metrics.get_dict("validation").items():
             self.logger.add_scalar(k, v, self.step)
         obj, pose, fake = get_samples(self.net_g, real)
         self.logger.add_image("real/object", obj, self.step)
@@ -402,12 +390,12 @@ class Trainer:
         """
 
         self._load_checkpoint()
+        best_val = Metrics.negative_infinity()
+        best_test = Metrics.negative_infinity()
 
         while True:
             pbar = tqdm(self.train_dl)
             for real in pbar:
-                # Training step
-                # reals, z = prepare_data_for_gan(data['image'], self.nz, self.device)
                 real = real.to(self.device)
                 loss_d = self._train_step_d(real)
                 if self.step % self.repeat_d == 0:
@@ -427,18 +415,21 @@ class Trainer:
                         lambdas=self.lambdas,
                         pretrain=self.pretrain,
                     )
-                    eval_metrics, eval_real = evaluate_partial(
+                    metrics_val, real_val = evaluate_partial(
                         dataloader=self.validation_dl,
-                        prefix="validation_",
                     )
-                    self._log(eval_metrics, eval_real)
-                    wandb.log(eval_metrics)
-                    test_res = evaluate_partial(dataloader=self.test_dl, prefix="test_")
-                    wandb.log(test_res)
+                    self._log(metrics_val, real_val)
+                    logger.info(metrics_val)
+                    wandb.log(metrics_val.get_dict("validation"))
+                    if metrics_val > best_val:
+                        metrics_test, _ = evaluate_partial(dataloader=self.test_dl)
+                        logger.info(metrics_test.get_dict("test"))
+                        best_test = metrics_test
 
                 if self.step != 0 and self.step % self.ckpt_every == 0:
                     self._save_checkpoint()
 
                 self.step += 1
                 if self.step > self.max_steps:
+                    wandb.log(best_test.get_dict("test"))
                     return

@@ -36,7 +36,7 @@ transforms_std_cars_tesla = (0.24, 0.24, 0.24)
 transforms_mean_poses_tesla = (0.25, 0.25, 0.25)
 transforms_std_poses_tesla = (0.43, 0.43, 0.43)
 # TODO: get these values
-transforms_mean_cars_stanford_cars = (.45, 0.45, 0.45)
+transforms_mean_cars_stanford_cars = (0.45, 0.45, 0.45)
 transforms_std_cars_stanford_cars = (0.29, 0.29, 0.29)
 transforms_mean_poses_stanford_cars = transforms_mean_poses_tesla
 transforms_std_poses_stanford_cars = transforms_std_poses_tesla

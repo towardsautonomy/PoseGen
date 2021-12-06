@@ -1,4 +1,6 @@
 import hashlib
+import logging
+
 import numpy as np
 import torch
 from pathlib import Path
@@ -29,3 +31,8 @@ def get_md5(path: Path) -> str:
 
 def get_mmh3(s: str, seed: int) -> int:
     return mmh3.hash(s, seed=seed)
+
+
+def get_logger(name: str) -> logging.Logger:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    return logging.getLogger(name)
