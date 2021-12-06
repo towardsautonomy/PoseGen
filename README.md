@@ -1,6 +1,6 @@
-# PoseGen: Self-Supervised Pose-Conditioned Image Generation
+# PoseGen: Pose-Conditioned Image Generation
 
-## Getting Started
+### Getting Started
 
 * Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 * Create and activate conda environment.
@@ -15,16 +15,17 @@ conda activate posegen
 ### Datasets
 * Download Stanford Cars dataset.
 ```shell
-cd data_dir
-sh {PoseGen DIR}/src/misc/stanford_cars_dataset_downloader.sh
+sh misc/stanford_cars_dataset_downloader.sh
 ```
 
-* Download Tesla
-```shell
-TODO
-```
+This script will download data into `/data/`.
 
 ### Experiments
+Run:
 ```shell
 python experiment.py
 ```
+
+- Experiments we conducted are listed in `posegen/experiments/cars.py`. 
+- Common configs between experiments are in `posegen/experiments/common.py`
+- Experiment results are logged and also written to W&B (see `posegen/config.py`)
