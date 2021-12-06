@@ -271,8 +271,8 @@ class Trainer:
         self.test_dl = ds_loader(Split.test).get_dataloader(**args_dl)
 
         torch.manual_seed(self.seed)
-        self.net_g = self._instantiate_net_g()
-        self.net_d = Discriminator(ndf=self.ndf)
+        self.net_g = self._instantiate_net_g().to(self.device)
+        self.net_d = Discriminator(ndf=self.ndf).to(self.device)
 
         self.opt_g = optim.Adam(self.net_g.parameters(), self.lr, self.betas)
         self.opt_d = optim.Adam(self.net_d.parameters(), self.lr, self.betas)
