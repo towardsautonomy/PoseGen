@@ -92,8 +92,11 @@ class ObjectWithMask:
         )
 
     def _get_image_from_path(self) -> PILImage:
-        img = Image.open(self.object_image_path)
-        return img.resize((self.width, self.height))
+        return (
+            Image.open(self.object_image_path)
+            .resize((self.width, self.height))
+            .convert('RGB')
+        )
 
 
 @dataclass
