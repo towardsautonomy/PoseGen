@@ -253,7 +253,7 @@ class PoseGen(nn.Module):
     def _apply_encoder(
         cond: bool, enc: Encoder, data: torch.Tensor
     ) -> Tuple[Optional[torch.Tensor], Optional[List[torch.Tensor]]]:
-        return enc(data) if cond else None, None
+        return enc(data) if cond else (None, None)
 
     def forward(self, data: ObjectTensorDataBatch):
         if self.n_encoders == 0:
