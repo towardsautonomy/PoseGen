@@ -159,8 +159,8 @@ def evaluate(
                 fake_object=fakes,
                 loss_g=loss_g,
                 loss_d=loss_d,
-                preds_real=real_pred,
-                preds_fake=fake_pred,
+                preds_real=compute_prob(real_pred),
+                preds_fake=compute_prob(fake_pred),
             )
 
         # Process metrics
