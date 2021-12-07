@@ -12,5 +12,9 @@ dependencies:
   - tensorboard
   - scipy
   - torchmetrics
+  - pandas
+  - pillow
   - pip:
     - torch-fidelity
+    - wandb
+    - mmh3
