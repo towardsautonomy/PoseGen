@@ -13,3 +13,5 @@ data/*
 # add sample dataset
 !data/background_samples
 !data/silhouette_samples
+
+.idea/
