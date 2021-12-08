@@ -13,9 +13,9 @@ conda activate posegen
 > NOTE: PyTorch dependency specified in `environment/conda_env.yml` uses CUDA 11.1. If CUDA 11.1 is unsupported on your environment, please install PyTorch separately by following the [official instructions](https://pytorch.org).
 
 ### Datasets
-* Download Stanford Cars dataset.
+* Download datasets.
 ```shell
-sh misc/stanford_cars_dataset_downloader.sh
+sh misc/download-data.sh
 ```
 
 This script will download data into `/data/`.
