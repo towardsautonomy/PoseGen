@@ -4,7 +4,8 @@ We present a flexible approach for conditional generation of objects given any c
 
 ![](media/posegen_intro.png)
 
-### [Paper](paper/pose-conditioned image generation.pdf)
+
+## [Paper](https://github.com/towardsautonomy/PoseGen/blob/main/paper/pose-conditioned%20image%20generation.pdf)
 
 ### Getting Started
 
