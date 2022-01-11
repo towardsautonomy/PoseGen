@@ -9,6 +9,7 @@ __pycache__/
 events.*
 data/*
 .ipynb_checkpoints
+out
 
 # add sample dataset
 !data/background_samples

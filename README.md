@@ -1,5 +1,11 @@
 # PoseGen: Pose-Conditioned Image Generation
 
+We present a flexible approach for conditional generation of objects given any combination of three desired input types: object (e.g. car), pose, and background. This approach can help us generate realistic training data in a controllable way and at large scale.
+
+![](media/posegen_intro.png)
+
+### [Paper](paper/pose-conditioned image generation.pdf)
+
 ### Getting Started
 
 * Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
