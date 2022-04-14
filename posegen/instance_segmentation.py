@@ -103,10 +103,8 @@ def main():
                 Image.fromarray((mask * 255.0).astype(np.uint8)).save(mask_path)
                 print(f'Saved mask to: {mask_path}')
                     
-# load images from 'TeslaPoseGen/{model}/{location}/image/{image_name}'
-# and corresponding masks from 'TeslaPoseGen/{model}/{location}/mask/{image_name}'
-# and visualize them as grids if images side by side
-def visualize_masks():
+# visualize samples as grid of images
+def visualize_samples():
     import glob
     import os
     import argparse
