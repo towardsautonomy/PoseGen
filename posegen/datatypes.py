@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from .utils import get_md5
+from utils import get_md5
 
 
 BinaryMask = Frame = NumpyNdArray = np.ndarray

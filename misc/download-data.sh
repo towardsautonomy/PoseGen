@@ -16,5 +16,6 @@ for tgz in *.tgz; do tar -xzvf $tgz; done
 
 # download tesla dataset
 cd ..
-wget -O PoseGen_resized.zip https://www.dropbox.com/s/22qd3ulhc9sl9u3/PoseGen_resized.zip?dl=1 -q --show-progress
-unzip PoseGen_resized.zip
+pip install gdown
+gdown https://drive.google.com/uc?id=1FMrdt5PdWZFlw2qED7OMPvJnqrRd-44k
+unzip TeslaPoseGen.zip
